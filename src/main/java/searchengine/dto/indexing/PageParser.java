@@ -51,7 +51,6 @@ public class PageParser extends RecursiveTask<HashSet<Page>> {
             result.addAll(task.join());
         }
 
-        System.out.println(result.size());
         return result;
     }
 
@@ -92,7 +91,7 @@ public class PageParser extends RecursiveTask<HashSet<Page>> {
     }
 
     private boolean isValidPath(String path) {
-        if (path.equals(page.getPath()) || !path.startsWith("/") || path.equals("/") || path.contains("#")) {
+        if (path.equals(page.getPath()) || !path.startsWith(page.getPath()) || path.contains("#")) {
             return false;
         } else if (path.contains(".")) {
             return path.substring(path.indexOf(".")).equals(".html");
