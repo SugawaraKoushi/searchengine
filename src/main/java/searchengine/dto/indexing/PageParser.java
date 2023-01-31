@@ -1,5 +1,6 @@
 package searchengine.dto.indexing;
 
+import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -11,6 +12,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.RecursiveTask;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -57,12 +59,18 @@ public class PageParser extends RecursiveTask<HashSet<Page>> {
     private HashSet<Page> handle(Page page) {
         HashSet<Page> result = new HashSet<>();
 
-        if (page.getPath().equals("/")) {
-            System.out.println("equals");
-        }
-
         try {
-            Document doc = Jsoup.connect(rootUrl + page.getPath()).get();
+            Connection.Response response = Jsoup.connect(rootUrl + page.getPath())
+                    .userAgent("BobTheSearcherBot")
+                    .referrer("http://www.google.com")
+                    .execute();
+
+            TimeUnit.MILLISECONDS.sleep(50);
+
+            Document doc = response.parse();
+
+            // Код ответа
+            page.setCode(response.statusCode());
 
             // Код страницы
             String content = doc.toString();
@@ -83,7 +91,7 @@ public class PageParser extends RecursiveTask<HashSet<Page>> {
                 result.add(p);
             }
 
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -91,12 +99,6 @@ public class PageParser extends RecursiveTask<HashSet<Page>> {
     }
 
     private boolean isValidPath(String path) {
-        if (path.equals(page.getPath()) || !path.startsWith(page.getPath()) || path.contains("#")) {
-            return false;
-        } else if (path.contains(".")) {
-            return path.substring(path.indexOf(".")).equals(".html");
-        } else {
-            return true;
-        }
+        return !path.equals(page.getPath()) && path.startsWith(page.getPath()) && !path.contains("#");
     }
 }

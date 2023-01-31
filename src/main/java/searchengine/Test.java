@@ -8,9 +8,12 @@ import java.util.concurrent.ForkJoinPool;
 
 public class Test {
     public static void main(String[] args) {
-        PageParser pageParser = new PageParser("http://www.playback.ru");
+        PageParser pageParser = new PageParser("https://www.skillbox.ru");
 
         HashSet<Page> pages = new ForkJoinPool().invoke(pageParser);
-        System.out.println(pages.size());
+
+        for (Page page : pages) {
+            System.out.println(page.getCode() + " - " + page.getPath());
+        }
     }
 }
