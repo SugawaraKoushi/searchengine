@@ -1,27 +1,22 @@
 package searchengine.dto.indexing;
 
 import org.jsoup.Connection;
-import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import searchengine.model.Page;
 
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.RecursiveTask;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
 
 public class PageParser extends RecursiveTask<HashSet<Page>> {
 //    private static final Pattern URL_PATTERN = Pattern.compile("(?<root>https?://[^/]+)?(?<path>.+)");
     private static String rootUrl;
-    private Page page = new Page();
+    private final Page page = new Page();
 
     public PageParser(String url) {
         if (rootUrl == null) {
@@ -97,7 +92,7 @@ public class PageParser extends RecursiveTask<HashSet<Page>> {
             }
 
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            page.setCode(getErrorResponseCode(e.getMessage()));
             return null;
         }
 
@@ -106,5 +101,11 @@ public class PageParser extends RecursiveTask<HashSet<Page>> {
 
     private boolean isValidPath(String path) {
         return !path.equals(page.getPath()) && path.startsWith(page.getPath()) && !path.contains("#");
+    }
+
+    private int getErrorResponseCode(String httpErrorMessage) {
+        int start = httpErrorMessage.indexOf('=') + 1;
+        int end = httpErrorMessage.indexOf(',');
+        return Integer.parseInt(httpErrorMessage.substring(start, end));
     }
 }
