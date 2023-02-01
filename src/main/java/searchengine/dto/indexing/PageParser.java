@@ -1,6 +1,7 @@
 package searchengine.dto.indexing;
 
 import org.jsoup.Connection;
+import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -9,6 +10,7 @@ import searchengine.model.Page;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.RecursiveTask;
@@ -50,7 +52,9 @@ public class PageParser extends RecursiveTask<HashSet<Page>> {
 
         for (PageParser task : tasks) {
             result.add(task.page);
-            result.addAll(task.join());
+            HashSet<Page> taskResult = task.join();
+            if (taskResult != null)
+                result.addAll(taskResult);
         }
 
         return result;
@@ -63,6 +67,7 @@ public class PageParser extends RecursiveTask<HashSet<Page>> {
             Connection.Response response = Jsoup.connect(rootUrl + page.getPath())
                     .userAgent("BobTheSearcherBot")
                     .referrer("http://www.google.com")
+                    .timeout(60000)
                     .execute();
 
             TimeUnit.MILLISECONDS.sleep(50);
@@ -92,7 +97,8 @@ public class PageParser extends RecursiveTask<HashSet<Page>> {
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println(e.getMessage());
+            return null;
         }
 
         return result;
