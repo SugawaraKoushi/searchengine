@@ -2,6 +2,7 @@ package searchengine.model;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.Cascade;
 
 import javax.persistence.*;
 
@@ -9,7 +10,7 @@ import javax.persistence.*;
 @Setter
 @Entity
 @Table(indexes = {
-        @Index(name = "path_index", columnList = "path")
+        @Index(name = "path_index", columnList = "path", unique = true)
 })
 public class Page {
     @Id
@@ -17,10 +18,11 @@ public class Page {
     @Column(nullable = false)
     private int id;
 
-    @Column(name = "site_id", nullable = false)
-    private int siteId;
+    @ManyToOne(cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
+    @JoinColumn(name = "site_id", nullable = false)
+    private Site site;
 
-    @Column(name = "\"path\"", columnDefinition = "TEXT", nullable = false)
+    @Column(name = "\"path\"", columnDefinition = "VARCHAR(255)", nullable = false)
     private String path;
 
     @Column(nullable = false)

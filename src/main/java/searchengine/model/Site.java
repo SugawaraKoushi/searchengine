@@ -5,6 +5,8 @@ import lombok.Setter;
 
 import javax.persistence.*;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -31,4 +33,7 @@ public class Site {
 
     @Column(name = "\"name\"", columnDefinition = "VARCHAR(255)", nullable = false)
     private String name;
+
+    @OneToMany(cascade = CascadeType.REMOVE, fetch = FetchType.LAZY, mappedBy = "site")
+    private Set<Page> pages;
 }
