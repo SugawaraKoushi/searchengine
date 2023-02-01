@@ -1,9 +1,11 @@
 package searchengine.dto.indexing;
 
+import org.hibernate.SessionFactory;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
+import org.springframework.beans.factory.annotation.Autowired;
 import searchengine.model.Page;
 
 import java.util.ArrayList;
@@ -15,6 +17,9 @@ import java.util.concurrent.TimeUnit;
 
 public class PageParser extends RecursiveTask<HashSet<Page>> {
 //    private static final Pattern URL_PATTERN = Pattern.compile("(?<root>https?://[^/]+)?(?<path>.+)");
+    @Autowired
+    private SessionFactory sessionFactory;
+
     private static String rootUrl;
     private final Page page = new Page();
 

@@ -5,7 +5,6 @@ import lombok.Setter;
 
 import javax.persistence.*;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.Set;
 
 @Getter
@@ -15,7 +14,7 @@ import java.util.Set;
 public class Site {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(nullable = true)
+    @Column(nullable = false)
     private int id;
 
     @Enumerated
@@ -34,6 +33,6 @@ public class Site {
     @Column(name = "\"name\"", columnDefinition = "VARCHAR(255)", nullable = false)
     private String name;
 
-    @OneToMany(cascade = CascadeType.REMOVE, fetch = FetchType.LAZY, mappedBy = "site")
+    @OneToMany(cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
     private Set<Page> pages;
 }
