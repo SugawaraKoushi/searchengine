@@ -33,6 +33,6 @@ public class Site {
     @Column(name = "\"name\"", columnDefinition = "VARCHAR(255)", nullable = false)
     private String name;
 
-    @OneToMany(cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
+    @OneToMany(cascade = CascadeType.REMOVE, fetch = FetchType.LAZY, mappedBy = "site")
     private Set<Page> pages;
 }
