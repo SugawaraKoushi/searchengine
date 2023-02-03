@@ -15,7 +15,7 @@ import java.util.concurrent.RecursiveTask;
 import java.util.concurrent.TimeUnit;
 
 
-public class PageParser extends RecursiveTask<HashSet<Page>> {
+public class SiteParser extends RecursiveTask<HashSet<Page>> {
 //    private static final Pattern URL_PATTERN = Pattern.compile("(?<root>https?://[^/]+)?(?<path>.+)");
     @Autowired
     private SessionFactory sessionFactory;
@@ -23,7 +23,7 @@ public class PageParser extends RecursiveTask<HashSet<Page>> {
     private static String rootUrl;
     private final Page page = new Page();
 
-    public PageParser(String url) {
+    public SiteParser(String url) {
         if (rootUrl == null) {
             rootUrl = url;
             page.setPath("/");
@@ -35,7 +35,7 @@ public class PageParser extends RecursiveTask<HashSet<Page>> {
     @Override
     protected HashSet<Page> compute() {
         HashSet<Page> result = new HashSet<>();         // Все страницы с сайта
-        List<PageParser> tasks = new ArrayList<>();     // Таски
+        List<SiteParser> tasks = new ArrayList<>();     // Таски
         HashSet<Page> pages = handle(page);             // Страницы из текущей
 
         if (pages == null)
@@ -43,14 +43,14 @@ public class PageParser extends RecursiveTask<HashSet<Page>> {
 
         // Создаем таски
         for (Page p : pages) {
-            PageParser task = new PageParser(p.getPath());
+            SiteParser task = new SiteParser(p.getPath());
             task.fork();
             tasks.add(task);
         }
 
         result.add(page);
 
-        for (PageParser task : tasks) {
+        for (SiteParser task : tasks) {
             result.add(task.page);
             HashSet<Page> taskResult = task.join();
             if (taskResult != null)
