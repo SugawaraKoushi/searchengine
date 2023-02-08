@@ -1,6 +1,7 @@
 package searchengine.dao;
 
 import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
 import org.springframework.beans.factory.annotation.Autowired;
 import searchengine.model.Site;
 import searchengine.util.HibernateUtil;
@@ -25,7 +26,9 @@ public class SiteDao implements Dao<Site>{
 
     @Override
     public void save(Site site) {
+        Transaction transaction = sessionFactory.getCurrentSession().beginTransaction();
         sessionFactory.getCurrentSession().persist(site);
+        transaction.commit();
     }
 
     @Override

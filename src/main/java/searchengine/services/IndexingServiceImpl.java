@@ -26,7 +26,7 @@ public class IndexingServiceImpl implements IndexingService {
 
     @Override
     public int index() {
-        saveSite(sites.getSites().get(2));
+        saveSite(sites.getSites().get(0));
         return 0;
     }
 
