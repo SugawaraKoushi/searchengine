@@ -1,5 +1,6 @@
 package searchengine.dao;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -9,6 +10,8 @@ public interface Dao<T> {
     Optional<List<T>> getAll();
 
     void save(T t);
+
+    void saveAll(Collection<T> t);
 
     void update(T t);
 

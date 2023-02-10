@@ -1,10 +1,12 @@
 package searchengine.dao;
 
 import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
 import org.springframework.beans.factory.annotation.Autowired;
 import searchengine.model.Page;
 import searchengine.util.HibernateUtil;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,6 +28,14 @@ public class PageDao implements Dao<Page> {
     @Override
     public void save(Page page) {
         sessionFactory.getCurrentSession().persist(page);
+    }
+
+    public void saveAll(Collection<Page> pages) {
+        Transaction transaction = sessionFactory.getCurrentSession().beginTransaction();
+        for (Page page : pages) {
+            sessionFactory.getCurrentSession().persist(page);
+        }
+        transaction.commit();
     }
 
     @Override

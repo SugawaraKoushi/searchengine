@@ -23,7 +23,7 @@ public class Test {
         sites.setSites(sitesList);
 
         IndexingService indexingService = new IndexingServiceImpl(sites);
-        int response = indexingService.index();
+        int response = indexingService.startIndexing();
         System.out.println(response);
     }
 }

@@ -6,6 +6,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 import org.springframework.beans.factory.annotation.Autowired;
+import searchengine.model.Site;
 import searchengine.model.Page;
 
 import java.util.ArrayList;
@@ -20,6 +21,7 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
     @Autowired
     private SessionFactory sessionFactory;
 
+    private static Site site;
     private static String rootUrl;
     private final Page page = new Page();
 
@@ -30,6 +32,11 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
         } else {
             page.setPath(url);
         }
+    }
+
+    public SiteParser(Site site) {
+        this(site.getUrl());
+        SiteParser.site = site;
     }
 
     @Override
@@ -48,6 +55,7 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
             tasks.add(task);
         }
 
+        page.setSite(site);
         result.add(page);
 
         for (SiteParser task : tasks) {
@@ -70,7 +78,7 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
                     .timeout(60000)
                     .execute();
 
-            TimeUnit.MILLISECONDS.sleep(50);
+            TimeUnit.MILLISECONDS.sleep(500);
 
             Document doc = response.parse();
 
@@ -109,6 +117,10 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
     }
 
     private int getErrorResponseCode(String httpErrorMessage) {
+        if (!httpErrorMessage.toLowerCase().contains("status")) {
+            return 408;
+        }
+
         int start = httpErrorMessage.indexOf('=') + 1;
         int end = httpErrorMessage.indexOf(',');
         return Integer.parseInt(httpErrorMessage.substring(start, end));
