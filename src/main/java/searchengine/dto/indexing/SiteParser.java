@@ -1,11 +1,11 @@
 package searchengine.dto.indexing;
 
-import org.hibernate.SessionFactory;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import searchengine.model.Site;
 import searchengine.model.Page;
 
@@ -17,10 +17,7 @@ import java.util.concurrent.TimeUnit;
 
 
 public class SiteParser extends RecursiveTask<HashSet<Page>> {
-//    private static final Pattern URL_PATTERN = Pattern.compile("(?<root>https?://[^/]+)?(?<path>.+)");
-    @Autowired
-    private SessionFactory sessionFactory;
-
+    private Logger logger = LoggerFactory.getLogger(SiteParser.class);
     private static Site site;
     private static String rootUrl;
     private final Page page = new Page();
@@ -43,6 +40,7 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
     protected HashSet<Page> compute() {
         HashSet<Page> result = new HashSet<>();         // Все страницы с сайта
         List<SiteParser> tasks = new ArrayList<>();     // Таски
+        logger.info("Start parsing: " + site.getUrl() + page.getPath());
         HashSet<Page> pages = handle(page);             // Страницы из текущей
 
         if (pages == null)
@@ -89,6 +87,7 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
             String content = doc.toString();
             content = content.replaceAll("'", "\\\\'");
             content = content.replaceAll("\"", "\\\\\"");
+            content = "content";
             page.setContent(content);
 
             // Получаем ссылки со страницы, удаляя ненужное

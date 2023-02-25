@@ -14,9 +14,12 @@ public class SiteDao implements Dao<Site>{
     @Autowired
     SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
     @Override
-    public Optional<Site> get(long id) {
+    public Optional<Site> get(int id) {
+        Transaction transaction = sessionFactory.getCurrentSession().beginTransaction();
         Site site = sessionFactory.getCurrentSession().get(Site.class, id);
-        return Optional.of(site);
+        transaction.commit();
+
+        return site == null ? Optional.empty() : Optional.of(site);
     }
 
     @Override

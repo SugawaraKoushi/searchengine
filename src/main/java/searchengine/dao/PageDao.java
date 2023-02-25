@@ -2,6 +2,8 @@ package searchengine.dao;
 
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import searchengine.model.Page;
 import searchengine.util.HibernateUtil;
@@ -11,10 +13,11 @@ import java.util.List;
 import java.util.Optional;
 
 public class PageDao implements Dao<Page> {
+    private Logger logger = LoggerFactory.getLogger(PageDao.class);
     @Autowired
     private SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
     @Override
-    public Optional<Page> get(long id) {
+    public Optional<Page> get(int id) {
         Page page = sessionFactory.getCurrentSession().get(Page.class, id);
         return Optional.of(page);
     }
@@ -33,6 +36,7 @@ public class PageDao implements Dao<Page> {
     public void saveAll(Collection<Page> pages) {
         Transaction transaction = sessionFactory.getCurrentSession().beginTransaction();
         for (Page page : pages) {
+            logger.info("Persisting page: " + page.getSite().getUrl() + page.getPath());
             sessionFactory.getCurrentSession().persist(page);
         }
         transaction.commit();

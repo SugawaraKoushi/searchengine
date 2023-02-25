@@ -1,6 +1,8 @@
 package searchengine.services;
 
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import searchengine.config.SitesList;
 import searchengine.dao.Dao;
@@ -11,7 +13,6 @@ import searchengine.model.Page;
 import searchengine.model.Site;
 import searchengine.model.Status;
 
-import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.concurrent.ForkJoinPool;
@@ -19,15 +20,17 @@ import java.util.concurrent.ForkJoinPool;
 @Service
 @RequiredArgsConstructor
 public class IndexingServiceImpl implements IndexingService {
-
     private final SitesList sites;
     private final Dao<Page> pageDao = new PageDao();
     private final Dao<Site> siteDao = new SiteDao();
+    private Logger logger = LoggerFactory.getLogger(IndexingServiceImpl.class);
 
+    public static int id;
 
     @Override
     public int startIndexing() {
         for (searchengine.config.Site site : sites.getSites()) {
+            logger.info(site.getName());
             saveSite(site);
         }
         return 0;
@@ -39,20 +42,29 @@ public class IndexingServiceImpl implements IndexingService {
     }
 
     private void saveSite(searchengine.config.Site site) {
+        ++id;
         Site s = new Site();
-
         s.setStatus(Status.INDEXING);
         s.setStatusTime(new Date(System.currentTimeMillis()));
         s.setLastError(null);
         s.setUrl(site.getUrl());
         s.setName(site.getName());
 
+        if (!isSiteAlreadyExists(id)) {
+            logger.debug("new site");
+            siteDao.save(s);
+        }
+
+
         HashSet<Page> pages = getPagesFromSite(s);
-        siteDao.save(s);
 
         if (pages != null){
             s.setPages(pages);
             pageDao.saveAll(pages);
         }
+    }
+
+    private boolean isSiteAlreadyExists(int id) {
+        return siteDao.get(id).isPresent();
     }
 }
