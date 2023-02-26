@@ -36,12 +36,18 @@ public class SiteDao implements Dao<Site>{
     }
 
     @Override
-    public void saveAll(Collection<Site> sites) {
-        Transaction transaction = sessionFactory.getCurrentSession().beginTransaction();
-        for (Site site : sites) {
-            sessionFactory.getCurrentSession().persist(site);
+    public int saveAll(Collection<Site> sites) {
+        try {
+            Transaction transaction = sessionFactory.getCurrentSession().beginTransaction();
+            for (Site site : sites) {
+                sessionFactory.getCurrentSession().persist(site);
+            }
+            transaction.commit();
+        } catch (Exception e) {
+            return -1;
         }
-        transaction.commit();
+
+    return 0;
     }
 
     @Override

@@ -11,7 +11,7 @@ public interface Dao<T> {
 
     void save(T t);
 
-    void saveAll(Collection<T> t);
+    int saveAll(Collection<T> t);
 
     void update(T t);
 

@@ -23,17 +23,14 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
     private final Page page = new Page();
 
     public SiteParser(String url) {
-        if (rootUrl == null) {
-            rootUrl = url;
-            page.setPath("/");
-        } else {
-            page.setPath(url);
-        }
+        page.setPath(url);
     }
 
     public SiteParser(Site site) {
         this(site.getUrl());
         SiteParser.site = site;
+        rootUrl = site.getUrl();
+        page.setPath("/");
     }
 
     @Override
@@ -87,7 +84,6 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
             String content = doc.toString();
             content = content.replaceAll("'", "\\\\'");
             content = content.replaceAll("\"", "\\\\\"");
-            content = "content";
             page.setContent(content);
 
             // Получаем ссылки со страницы, удаляя ненужное

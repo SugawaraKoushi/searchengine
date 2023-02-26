@@ -33,13 +33,19 @@ public class PageDao implements Dao<Page> {
         sessionFactory.getCurrentSession().persist(page);
     }
 
-    public void saveAll(Collection<Page> pages) {
-        Transaction transaction = sessionFactory.getCurrentSession().beginTransaction();
-        for (Page page : pages) {
-            logger.info("Persisting page: " + page.getSite().getUrl() + page.getPath());
-            sessionFactory.getCurrentSession().persist(page);
+    public int saveAll(Collection<Page> pages) {
+        try {
+            Transaction transaction = sessionFactory.getCurrentSession().beginTransaction();
+            for (Page page : pages) {
+                logger.info("Persisting page: " + page.getSite().getUrl() + page.getPath());
+                sessionFactory.getCurrentSession().persist(page);
+            }
+            transaction.commit();
+        } catch(Exception e) {
+            return -1;
         }
-        transaction.commit();
+
+        return 0;
     }
 
     @Override

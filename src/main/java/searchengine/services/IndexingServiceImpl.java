@@ -30,7 +30,7 @@ public class IndexingServiceImpl implements IndexingService {
     @Override
     public int startIndexing() {
         for (searchengine.config.Site site : sites.getSites()) {
-            logger.info(site.getName());
+            logger.debug(site.getName());
             saveSite(site);
         }
         return 0;
@@ -58,10 +58,13 @@ public class IndexingServiceImpl implements IndexingService {
 
         HashSet<Page> pages = getPagesFromSite(s);
 
+        int pageSaveResult = 0;
         if (pages != null){
             s.setPages(pages);
-            pageDao.saveAll(pages);
+            pageSaveResult = pageDao.saveAll(pages);
         }
+
+        s.setStatus(pageSaveResult == 0 ? Status.INDEXED : Status.FAILED);
     }
 
     private boolean isSiteAlreadyExists(int id) {
