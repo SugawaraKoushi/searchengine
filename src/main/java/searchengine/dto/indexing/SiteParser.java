@@ -18,19 +18,16 @@ import java.util.concurrent.TimeUnit;
 
 public class SiteParser extends RecursiveTask<HashSet<Page>> {
     private Logger logger = LoggerFactory.getLogger(SiteParser.class);
-    private static Site site;
-    private static String rootUrl;
+    private Site site;
     private final Page page = new Page();
 
-    public SiteParser(String url) {
-        page.setPath(url);
+    public SiteParser(Site site, String url) {
+        this.site = site;
+        this.page.setPath(url);
     }
 
     public SiteParser(Site site) {
-        this(site.getUrl());
-        SiteParser.site = site;
-        rootUrl = site.getUrl();
-        page.setPath("/");
+        this(site, "/");
     }
 
     @Override
@@ -45,7 +42,7 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
 
         // Создаем таски
         for (Page p : pages) {
-            SiteParser task = new SiteParser(p.getPath());
+            SiteParser task = new SiteParser(site, p.getPath());
             task.fork();
             tasks.add(task);
         }
@@ -67,7 +64,7 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
         HashSet<Page> result = new HashSet<>();
 
         try {
-            Connection.Response response = Jsoup.connect(rootUrl + page.getPath())
+            Connection.Response response = Jsoup.connect(site.getUrl() + page.getPath())
                     .userAgent("BobTheSearcherBot")
                     .referrer("http://www.google.com")
                     .timeout(60000)
@@ -101,6 +98,7 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
 
         } catch (Exception e) {
             page.setCode(getErrorResponseCode(e.getMessage()));
+            site.setLastError(e.getMessage());
             return null;
         }
 

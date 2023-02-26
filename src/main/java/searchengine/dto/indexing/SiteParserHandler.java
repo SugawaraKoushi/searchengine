@@ -1,43 +1,31 @@
-package searchengine.services;
+package searchengine.dto.indexing;
 
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-import searchengine.config.SitesList;
 import searchengine.dao.Dao;
 import searchengine.dao.PageDao;
 import searchengine.dao.SiteDao;
-import searchengine.dto.indexing.SiteParser;
-import searchengine.dto.indexing.SiteParserHandler;
 import searchengine.model.Page;
 import searchengine.model.Site;
 import searchengine.model.Status;
+import searchengine.services.IndexingServiceImpl;
 
 import java.util.Date;
 import java.util.HashSet;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
 
-@Service
 @RequiredArgsConstructor
-public class IndexingServiceImpl implements IndexingService {
-    private final SitesList sites;
+public class SiteParserHandler implements Runnable {
+    private SiteParser siteParser;
+    private searchengine.config.Site site;
     private final Dao<Page> pageDao = new PageDao();
     private final Dao<Site> siteDao = new SiteDao();
+    private static int id;
     private Logger logger = LoggerFactory.getLogger(IndexingServiceImpl.class);
 
-    public static int id;
-
-    @Override
-    public int startIndexing() {
-        ExecutorService executor = Executors.newFixedThreadPool(4);
-
-        for (searchengine.config.Site site : sites.getSites()) {
-            executor.execute(new SiteParserHandler(site));
-        }
-        return 0;
+    public SiteParserHandler(searchengine.config.Site site) {
+        this.site = site;
     }
 
     private HashSet<Page> getPagesFromSite(Site site) {
@@ -59,7 +47,6 @@ public class IndexingServiceImpl implements IndexingService {
             siteDao.save(s);
         }
 
-
         HashSet<Page> pages = getPagesFromSite(s);
 
         int pageSaveResult = 0;
@@ -68,11 +55,16 @@ public class IndexingServiceImpl implements IndexingService {
             pageSaveResult = pageDao.saveAll(pages);
         }
 
-        //s.setStatus(pageSaveResult == 0 ? Status.INDEXED : Status.FAILED);
-        //siteDao.update(s);
+        s.setStatus(pageSaveResult == 0 ? Status.INDEXED : Status.FAILED);
+        siteDao.update(s);
     }
 
     private boolean isSiteAlreadyExists(int id) {
         return siteDao.get(id).isPresent();
+    }
+
+    @Override
+    public void run() {
+        saveSite(site);
     }
 }

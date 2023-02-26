@@ -52,7 +52,9 @@ public class SiteDao implements Dao<Site>{
 
     @Override
     public void update(Site site) {
+        Transaction transaction = sessionFactory.getCurrentSession().beginTransaction();
         sessionFactory.getCurrentSession().merge(site);
+        transaction.commit();
     }
 
     @Override
