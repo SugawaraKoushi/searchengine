@@ -19,6 +19,7 @@ import java.util.HashSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -35,8 +36,18 @@ public class IndexingServiceImpl implements IndexingService {
         ExecutorService executor = Executors.newFixedThreadPool(4);
 
         for (searchengine.config.Site site : sites.getSites()) {
-            executor.execute(new SiteParserHandler(site));
+            Thread thread = new Thread(new SiteParserHandler(site));
+            thread.start();
         }
+
+//        executor.shutdown();
+//        try {
+//            if(!executor.awaitTermination(800,TimeUnit.MILLISECONDS))
+//                executor.shutdown();
+//        } catch (InterruptedException e) {
+//            executor.shutdownNow();
+//        }
+
         return 0;
     }
 
@@ -68,8 +79,8 @@ public class IndexingServiceImpl implements IndexingService {
             pageSaveResult = pageDao.saveAll(pages);
         }
 
-        //s.setStatus(pageSaveResult == 0 ? Status.INDEXED : Status.FAILED);
-        //siteDao.update(s);
+        s.setStatus(pageSaveResult == 0 ? Status.INDEXED : Status.FAILED);
+        siteDao.update(s);
     }
 
     private boolean isSiteAlreadyExists(int id) {

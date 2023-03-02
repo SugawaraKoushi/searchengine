@@ -21,7 +21,7 @@ public class SiteParserHandler implements Runnable {
     private searchengine.config.Site site;
     private final Dao<Page> pageDao = new PageDao();
     private final Dao<Site> siteDao = new SiteDao();
-    private static int id;
+    private static volatile int id;
     private Logger logger = LoggerFactory.getLogger(IndexingServiceImpl.class);
 
     public SiteParserHandler(searchengine.config.Site site) {
@@ -51,8 +51,8 @@ public class SiteParserHandler implements Runnable {
 
         int pageSaveResult = 0;
         if (pages != null){
-            s.setPages(pages);
             pageSaveResult = pageDao.saveAll(pages);
+            s.setPages(pages);
         }
 
         s.setStatus(pageSaveResult == 0 ? Status.INDEXED : Status.FAILED);

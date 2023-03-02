@@ -1,11 +1,13 @@
 package searchengine.dao;
 
+import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import searchengine.model.Page;
+import searchengine.model.Site;
 import searchengine.util.HibernateUtil;
 
 import java.util.Collection;
@@ -18,30 +20,39 @@ public class PageDao implements Dao<Page> {
     private SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
     @Override
     public Optional<Page> get(int id) {
-        Page page = sessionFactory.getCurrentSession().get(Page.class, id);
+        Session session = sessionFactory.openSession();
+        Page page = session.get(Page.class, id);
         return Optional.of(page);
     }
 
     @Override
     public Optional<List<Page>> getAll() {
-        List<Page> pages = sessionFactory.getCurrentSession().createQuery("from", Page.class).list();
+        Session session = sessionFactory.openSession();
+        List<Page> pages = session.createQuery("from", Page.class).list();
         return Optional.of(pages);
     }
 
     @Override
     public void save(Page page) {
-        sessionFactory.getCurrentSession().persist(page);
+        Session session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+        session.persist(page);
+        transaction.commit();
+        session.close();
     }
 
     public int saveAll(Collection<Page> pages) {
         try {
-            Transaction transaction = sessionFactory.getCurrentSession().beginTransaction();
+            Session session = sessionFactory.openSession();
+            Transaction transaction = session.beginTransaction();
+
             for (Page page : pages) {
-                logger.info("Persisting page: " + page.getSite().getUrl() + page.getPath());
-                sessionFactory.getCurrentSession().persist(page);
+                session.persist(page);
             }
+
             transaction.commit();
-        } catch(Exception e) {
+            session.close();
+        } catch (Exception e) {
             return -1;
         }
 
@@ -50,11 +61,21 @@ public class PageDao implements Dao<Page> {
 
     @Override
     public void update(Page page) {
-        sessionFactory.getCurrentSession().merge(page);
+        Session session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+
+        session.merge(page);
+        transaction.commit();
+        session.close();
     }
 
     @Override
     public void delete(Page page) {
-        sessionFactory.getCurrentSession().delete(page);
+        Session session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+
+        session.delete(page);
+        transaction.commit();
+        session.close();
     }
 }
