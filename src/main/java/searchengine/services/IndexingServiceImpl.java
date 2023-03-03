@@ -16,10 +16,7 @@ import searchengine.model.Status;
 
 import java.util.Date;
 import java.util.HashSet;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -33,20 +30,10 @@ public class IndexingServiceImpl implements IndexingService {
 
     @Override
     public int startIndexing() {
-        ExecutorService executor = Executors.newFixedThreadPool(4);
-
         for (searchengine.config.Site site : sites.getSites()) {
             Thread thread = new Thread(new SiteParserHandler(site));
             thread.start();
         }
-
-//        executor.shutdown();
-//        try {
-//            if(!executor.awaitTermination(800,TimeUnit.MILLISECONDS))
-//                executor.shutdown();
-//        } catch (InterruptedException e) {
-//            executor.shutdownNow();
-//        }
 
         return 0;
     }

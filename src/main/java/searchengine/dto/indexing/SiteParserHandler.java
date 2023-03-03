@@ -48,9 +48,10 @@ public class SiteParserHandler implements Runnable {
         }
 
         HashSet<Page> pages = getPagesFromSite(s);
+        pages.removeIf(page -> page.getContent() == null);
 
         int pageSaveResult = 0;
-        if (pages != null){
+        if (pages != null) {
             pageSaveResult = pageDao.saveAll(pages);
             s.setPages(pages);
         }

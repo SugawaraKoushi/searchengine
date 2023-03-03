@@ -2,6 +2,8 @@ package searchengine.model;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
 
 import javax.persistence.*;
 import java.util.Date;
@@ -33,6 +35,7 @@ public class Site {
     @Column(name = "\"name\"", columnDefinition = "VARCHAR(255)", nullable = false)
     private String name;
 
+    @NotFound(action = NotFoundAction.IGNORE)
     @OneToMany(cascade = CascadeType.REMOVE, fetch = FetchType.LAZY, mappedBy = "site")
     private Set<Page> pages;
 }

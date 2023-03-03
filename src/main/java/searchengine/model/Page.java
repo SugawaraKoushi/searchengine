@@ -10,7 +10,7 @@ import java.io.Serializable;
 @Setter
 @Entity
 @Table(indexes = {
-        @Index(name = "path_index", columnList = "path", unique = true)
+        @Index(name = "path_index", columnList = "path")
 })
 public class Page implements Serializable {
     @Id
@@ -34,9 +34,9 @@ public class Page implements Serializable {
     @Override
     public int hashCode() {
         int result = id;
-        result = result * 31 + path.hashCode();
+        result = result * 31 + (path != null ? path.hashCode() : 0);
         result += code;
-        result += result * 31 + (content != null  ? content.hashCode() : 0);
+        result += result * 31 + (content != null ? content.hashCode() : 0);
         return result;
     }
 
@@ -49,7 +49,8 @@ public class Page implements Serializable {
             return false;
 
         if (obj instanceof Page p) {
-            return this.path.equals(p.path) || this.id == p.id;
+            if (p.path != null)
+                return this.path.equals(p.path) || this.id == p.id;
         }
 
         return false;

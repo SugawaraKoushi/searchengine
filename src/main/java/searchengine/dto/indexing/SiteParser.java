@@ -37,6 +37,8 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
         logger.info("Start parsing: " + site.getUrl() + page.getPath());
         HashSet<Page> pages = handle(page);             // Страницы из текущей
 
+        page.setSite(site);
+
         if (pages == null)
             return null;
 
@@ -47,7 +49,7 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
             tasks.add(task);
         }
 
-        page.setSite(site);
+        //page.setSite(site);
         result.add(page);
 
         for (SiteParser task : tasks) {

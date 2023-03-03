@@ -47,6 +47,7 @@ public class PageDao implements Dao<Page> {
             Transaction transaction = session.beginTransaction();
 
             for (Page page : pages) {
+                logger.info("Persisting: " + page.getPath());
                 session.persist(page);
             }
 
