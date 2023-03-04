@@ -6,10 +6,13 @@ import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import searchengine.dao.Dao;
+import searchengine.dao.SiteDao;
 import searchengine.model.Site;
 import searchengine.model.Page;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.RecursiveTask;
@@ -17,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 
 
 public class SiteParser extends RecursiveTask<HashSet<Page>> {
+    private Dao<Site> siteDao = new SiteDao();
     private Logger logger = LoggerFactory.getLogger(SiteParser.class);
     private Site site;
     private final Page page = new Page();
@@ -38,6 +42,7 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
         HashSet<Page> pages = handle(page);             // Страницы из текущей
 
         page.setSite(site);
+        updateSiteStatusTime();
 
         if (pages == null)
             return null;
@@ -49,7 +54,6 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
             tasks.add(task);
         }
 
-        //page.setSite(site);
         result.add(page);
 
         for (SiteParser task : tasks) {
@@ -119,5 +123,10 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
         int start = httpErrorMessage.indexOf('=') + 1;
         int end = httpErrorMessage.indexOf(',');
         return Integer.parseInt(httpErrorMessage.substring(start, end));
+    }
+
+    private void updateSiteStatusTime() {
+        site.setStatusTime(new Date(System.currentTimeMillis()));
+        siteDao.update(site);
     }
 }

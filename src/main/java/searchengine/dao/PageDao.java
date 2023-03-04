@@ -22,13 +22,24 @@ public class PageDao implements Dao<Page> {
     public Optional<Page> get(int id) {
         Session session = sessionFactory.openSession();
         Page page = session.get(Page.class, id);
-        return Optional.of(page);
+        return page == null ? Optional.empty() : Optional.of(page);
+    }
+
+    public Optional<Page> get(Page page) {
+        Session session = sessionFactory.openSession();
+        String query = "from " + Page.class.getSimpleName() + " where path like " + page.getPath() + " and content like "
+                + page.getContent() + " and site_id = " + page.getSite().getId();
+        Page p = session.createQuery(query, Page.class).getSingleResult();
+
+        return p == null ? Optional.empty() : Optional.of(p);
     }
 
     @Override
     public Optional<List<Page>> getAll() {
         Session session = sessionFactory.openSession();
-        List<Page> pages = session.createQuery("from", Page.class).list();
+        List<Page> pages = session.createQuery("from", Page.class).getResultList();
+        session.close();
+
         return Optional.of(pages);
     }
 

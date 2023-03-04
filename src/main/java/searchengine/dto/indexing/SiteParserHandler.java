@@ -17,11 +17,9 @@ import java.util.concurrent.ForkJoinPool;
 
 @RequiredArgsConstructor
 public class SiteParserHandler implements Runnable {
-    private SiteParser siteParser;
     private searchengine.config.Site site;
     private final Dao<Page> pageDao = new PageDao();
     private final Dao<Site> siteDao = new SiteDao();
-    private static volatile int id;
     private Logger logger = LoggerFactory.getLogger(IndexingServiceImpl.class);
 
     public SiteParserHandler(searchengine.config.Site site) {
@@ -34,7 +32,6 @@ public class SiteParserHandler implements Runnable {
     }
 
     private void saveSite(searchengine.config.Site site) {
-        ++id;
         Site s = new Site();
         s.setStatus(Status.INDEXING);
         s.setStatusTime(new Date(System.currentTimeMillis()));
@@ -42,8 +39,9 @@ public class SiteParserHandler implements Runnable {
         s.setUrl(site.getUrl());
         s.setName(site.getName());
 
-        if (!isSiteAlreadyExists(id)) {
-            logger.debug("new site");
+        if (isSiteExists(s.getId())) {
+            siteDao.update(s);
+        } else {
             siteDao.save(s);
         }
 
@@ -52,16 +50,24 @@ public class SiteParserHandler implements Runnable {
 
         int pageSaveResult = 0;
         if (pages != null) {
-            pageSaveResult = pageDao.saveAll(pages);
+            for (Page p : pages) {
+                if (!isPageExists(p.getId()))
+                    pageDao.save(p);
+            }
+
             s.setPages(pages);
         }
 
-        s.setStatus(pageSaveResult == 0 ? Status.INDEXED : Status.FAILED);
+        s.setStatus(Status.INDEXED);
         siteDao.update(s);
     }
 
-    private boolean isSiteAlreadyExists(int id) {
+    private boolean isSiteExists(int id) {
         return siteDao.get(id).isPresent();
+    }
+
+    private boolean isPageExists(int id) {
+        return pageDao.get(id).isPresent();
     }
 
     @Override

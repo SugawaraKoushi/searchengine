@@ -23,10 +23,20 @@ public class SiteDao implements Dao<Site>{
         return site == null ? Optional.empty() : Optional.of(site);
     }
 
+    public Optional<List<Site>> get(String url) {
+        Session session = sessionFactory.openSession();
+        String query = "from " + Site.class.getSimpleName() + " where url like '" + url + "'";
+        List<Site> sites = session.createQuery(query, Site.class).getResultList();
+        session.close();
+
+        return sites == null ? Optional.empty() : Optional.of(sites);
+    }
+
     @Override
     public Optional<List<Site>> getAll() {
         Session session = sessionFactory.openSession();
         List<Site> sites = session.createQuery("from", Site.class).list();
+        session.close();
         return Optional.of(sites);
     }
 

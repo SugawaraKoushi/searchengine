@@ -33,4 +33,9 @@ public class ApiController {
                 "{ 'result': true }" : "{'result': false,'error': \"Индексация уже запущена\"}";
         return ResponseEntity.ok(responseText);
     }
+
+    @GetMapping("/stopIndexing")
+    public void stopIndexing() {
+
+    }
 }
