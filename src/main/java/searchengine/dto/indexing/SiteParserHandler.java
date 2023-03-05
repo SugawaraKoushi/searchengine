@@ -18,16 +18,16 @@ import java.util.concurrent.ForkJoinPool;
 @RequiredArgsConstructor
 public class SiteParserHandler implements Runnable {
     private searchengine.config.Site site;
+    private SiteParser parser;
     private final Dao<Page> pageDao = new PageDao();
     private final Dao<Site> siteDao = new SiteDao();
-    private Logger logger = LoggerFactory.getLogger(IndexingServiceImpl.class);
 
     public SiteParserHandler(searchengine.config.Site site) {
         this.site = site;
     }
 
     private HashSet<Page> getPagesFromSite(Site site) {
-        SiteParser parser = new SiteParser(site);
+        this.parser = new SiteParser(site);
         return new ForkJoinPool().invoke(parser);
     }
 
@@ -48,17 +48,15 @@ public class SiteParserHandler implements Runnable {
         HashSet<Page> pages = getPagesFromSite(s);
         pages.removeIf(page -> page.getContent() == null);
 
-        int pageSaveResult = 0;
-        if (pages != null) {
-            for (Page p : pages) {
-                if (!isPageExists(p.getId()))
-                    pageDao.save(p);
-            }
+        int savePagesStatus = savePages(pages);
 
+        if (savePagesStatus == 0) {
+            s.setStatus(Status.INDEXED);
             s.setPages(pages);
+        } else {
+            s.setStatus(Status.FAILED);
         }
 
-        s.setStatus(Status.INDEXED);
         siteDao.update(s);
     }
 
@@ -70,8 +68,25 @@ public class SiteParserHandler implements Runnable {
         return pageDao.get(id).isPresent();
     }
 
+    private int savePages(HashSet<Page> pages) {
+        if (pages != null) {
+            for (Page p : pages) {
+                if (!isPageExists(p.getId()))
+                    pageDao.save(p);
+            }
+
+            return 0;
+        }
+
+        return -1;
+    }
+
     @Override
     public void run() {
         saveSite(site);
+    }
+
+    public void stopParsing() {
+        parser.stop();
     }
 }

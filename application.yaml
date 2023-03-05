@@ -1,5 +1,3 @@
-logging.level.: DEBUG
-
 server:
   port: 8080
 

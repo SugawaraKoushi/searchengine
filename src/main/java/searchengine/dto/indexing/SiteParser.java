@@ -10,6 +10,7 @@ import searchengine.dao.Dao;
 import searchengine.dao.SiteDao;
 import searchengine.model.Site;
 import searchengine.model.Page;
+import searchengine.model.Status;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -20,8 +21,9 @@ import java.util.concurrent.TimeUnit;
 
 
 public class SiteParser extends RecursiveTask<HashSet<Page>> {
-    private Dao<Site> siteDao = new SiteDao();
-    private Logger logger = LoggerFactory.getLogger(SiteParser.class);
+    private static boolean stop = false;
+    private final Dao<Site> siteDao = new SiteDao();
+    private final Logger logger = LoggerFactory.getLogger(SiteParser.class);
     private Site site;
     private final Page page = new Page();
 
@@ -67,6 +69,12 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
     }
 
     private HashSet<Page> handle(Page page) {
+        if (stop) {
+            updateSiteLastError("Индексация остановлена пользователем");
+            updateSiteStatus(Status.FAILED);
+            return null;
+        }
+
         HashSet<Page> result = new HashSet<>();
 
         try {
@@ -128,5 +136,19 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
     private void updateSiteStatusTime() {
         site.setStatusTime(new Date(System.currentTimeMillis()));
         siteDao.update(site);
+    }
+
+    private void updateSiteStatus(Status status) {
+        site.setStatus(status);
+        siteDao.update(site);
+    }
+
+    private void updateSiteLastError(String error) {
+        site.setLastError(error);
+        siteDao.update(site);
+    }
+
+    public void stop() {
+        stop = true;
     }
 }

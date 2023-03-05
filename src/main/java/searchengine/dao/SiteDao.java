@@ -7,11 +7,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import searchengine.model.Site;
 import searchengine.util.HibernateUtil;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-public class SiteDao implements Dao<Site>{
+public class SiteDao implements Dao<Site> {
     @Autowired
     SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
     @Override
@@ -23,13 +22,13 @@ public class SiteDao implements Dao<Site>{
         return site == null ? Optional.empty() : Optional.of(site);
     }
 
-    public Optional<List<Site>> get(String url) {
+    public Optional<Site> get(Site site) {
         Session session = sessionFactory.openSession();
-        String query = "from " + Site.class.getSimpleName() + " where url like '" + url + "'";
-        List<Site> sites = session.createQuery(query, Site.class).getResultList();
+        String query = "from " + Site.class.getSimpleName() + " where url like '" + site.getUrl() + "'";
+        Site s = session.createQuery(query, Site.class).getSingleResult();
         session.close();
 
-        return sites == null ? Optional.empty() : Optional.of(sites);
+        return s == null ? Optional.empty() : Optional.of(s);
     }
 
     @Override
@@ -47,25 +46,6 @@ public class SiteDao implements Dao<Site>{
         session.persist(site);
         transaction.commit();
         session.close();
-    }
-
-    @Override
-    public int saveAll(Collection<Site> sites) {
-        try {
-            Session session = sessionFactory.openSession();
-            Transaction transaction = session.beginTransaction();
-
-            for (Site site : sites) {
-                session.persist(site);
-            }
-
-            transaction.commit();
-            session.close();
-        } catch (Exception e) {
-            return -1;
-        }
-
-    return 0;
     }
 
     @Override
