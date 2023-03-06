@@ -2,6 +2,7 @@ package searchengine.controllers;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import searchengine.dto.statistics.StatisticsResponse;
@@ -36,5 +37,21 @@ public class ApiController {
         String responseText = indexingService.stopIndexing() == 0 ?
                 "{ \"result\": true }" : "{ \"result\": false, \"error\": \"Индексация не запущена\" }";
         return ResponseEntity.ok(responseText);
+    }
+
+    @PostMapping("/indexPage")
+    public ResponseEntity<String> indexPage(String url) {
+        String responseText;
+        int indexPageResponse = indexingService.indexPage(url);
+
+        if (indexPageResponse == 0) {
+            responseText = "{ \"result\": true }";
+            return ResponseEntity.ok(responseText);
+        } else {
+            responseText = "{ \"result\": false, " +
+                    "\"error\": \"Данная страница находится за пределами сайтов," +
+                    "указанных в конфигурационном файле\" }";
+            return ResponseEntity.status(400).body(responseText);
+        }
     }
 }

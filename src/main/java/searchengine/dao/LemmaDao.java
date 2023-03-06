@@ -4,68 +4,70 @@ import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.springframework.beans.factory.annotation.Autowired;
+import searchengine.model.Lemma;
 import searchengine.model.Site;
 import searchengine.util.HibernateUtil;
 
 import java.util.List;
 import java.util.Optional;
 
-public class SiteDao implements Dao<Site> {
+public class LemmaDao implements Dao<Lemma>{
     @Autowired
     SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
     @Override
-    public Optional<Site> get(int id) {
+    public Optional<Lemma> get(int id) {
         Session session = sessionFactory.openSession();
-        Site site = session.get(Site.class, id);
+        Lemma lemma = session.get(Lemma.class, id);
         session.close();
 
-        return site == null ? Optional.empty() : Optional.of(site);
-    }
-
-    public Optional<Site> get(Site site) {
-        Session session = sessionFactory.openSession();
-        String query = "from " + Site.class.getSimpleName() + " where url like '" + site.getUrl() + "'";
-        Site s = session.createQuery(query, Site.class).getSingleResult();
-        session.close();
-
-        return s == null ? Optional.empty() : Optional.of(s);
+        return lemma == null ? Optional.empty() : Optional.of(lemma);
     }
 
     @Override
-    public Optional<List<Site>> getAll() {
+    public Optional<Lemma> get(Lemma lemma) {
         Session session = sessionFactory.openSession();
-        List<Site> sites = session.createQuery("from", Site.class).list();
+        String query = "from " + Site.class.getSimpleName() + " where lemma like '" + lemma.getLemma() + "'";
+        Lemma l = session.createQuery(query, Lemma.class).getSingleResult();
         session.close();
 
-        return Optional.of(sites);
+        return l == null ? Optional.empty() : Optional.of(l);
     }
 
     @Override
-    public void save(Site site) {
+    public Optional<List<Lemma>> getAll() {
+        Session session = sessionFactory.openSession();
+        List<Lemma> lemmas = session.createQuery("from", Lemma.class).list();
+        session.close();
+
+        return Optional.of(lemmas);
+    }
+
+    @Override
+    public void save(Lemma lemma) {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
-        session.persist(site);
 
+        session.persist(lemma);
         transaction.commit();
         session.close();
     }
 
     @Override
-    public void update(Site site) {
+    public void update(Lemma lemma) {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
 
-        session.merge(site);
+        session.merge(lemma);
         transaction.commit();
         session.close();
     }
 
     @Override
-    public void delete(Site site) {
+    public void delete(Lemma lemma) {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
 
-        session.delete(site);
+        session.delete(lemma);
         transaction.commit();
         session.close();
     }

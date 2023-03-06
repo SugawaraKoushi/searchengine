@@ -4,68 +4,69 @@ import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.springframework.beans.factory.annotation.Autowired;
+import searchengine.model.Index;
 import searchengine.model.Site;
 import searchengine.util.HibernateUtil;
 
 import java.util.List;
 import java.util.Optional;
 
-public class SiteDao implements Dao<Site> {
+public class IndexDao implements Dao<Index> {
     @Autowired
     SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
     @Override
-    public Optional<Site> get(int id) {
+    public Optional<Index> get(int id) {
         Session session = sessionFactory.openSession();
-        Site site = session.get(Site.class, id);
+        Index index = session.get(Index.class, id);
         session.close();
 
-        return site == null ? Optional.empty() : Optional.of(site);
+        return index == null ? Optional.empty() : Optional.of(index);
     }
 
-    public Optional<Site> get(Site site) {
+    public Optional<Index> get(Index index) {
         Session session = sessionFactory.openSession();
-        String query = "from " + Site.class.getSimpleName() + " where url like '" + site.getUrl() + "'";
-        Site s = session.createQuery(query, Site.class).getSingleResult();
+        String query = "from " + Site.class.getSimpleName() + " where lemma_id = " + index.getLemma().getId();
+        Index i = session.createQuery("from", Index.class).getSingleResult();
         session.close();
 
-        return s == null ? Optional.empty() : Optional.of(s);
-    }
-
-    @Override
-    public Optional<List<Site>> getAll() {
-        Session session = sessionFactory.openSession();
-        List<Site> sites = session.createQuery("from", Site.class).list();
-        session.close();
-
-        return Optional.of(sites);
+        return i == null ? Optional.empty() : Optional.of(i);
     }
 
     @Override
-    public void save(Site site) {
+    public Optional<List<Index>> getAll() {
+        Session session = sessionFactory.openSession();
+        List<Index> indexes = session.createQuery("from", Index.class).list();
+        session.close();
+
+        return Optional.of(indexes);
+    }
+
+    @Override
+    public void save(Index index) {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
-        session.persist(site);
 
+        session.persist(index);
         transaction.commit();
         session.close();
     }
 
     @Override
-    public void update(Site site) {
+    public void update(Index index) {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
 
-        session.merge(site);
+        session.merge(index);
         transaction.commit();
         session.close();
     }
 
     @Override
-    public void delete(Site site) {
+    public void delete(Index index) {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
 
-        session.delete(site);
+        session.delete(index);
         transaction.commit();
         session.close();
     }
