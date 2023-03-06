@@ -24,4 +24,7 @@ public class Lemma {
 
     @Column(nullable = false)
     private int frequency;
+
+    @OneToOne(cascade = CascadeType.REMOVE, fetch = FetchType.LAZY, mappedBy = "lemma")
+    private Index index;
 }

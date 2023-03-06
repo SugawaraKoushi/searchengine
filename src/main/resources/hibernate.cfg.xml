@@ -21,5 +21,7 @@
 
         <mapping class="searchengine.model.Site"/>
         <mapping class="searchengine.model.Page"/>
+        <mapping class="searchengine.model.Lemma"/>
+        <mapping class="searchengine.model.Index"/>
     </session-factory>
 </hibernate-configuration>
