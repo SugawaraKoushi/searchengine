@@ -19,13 +19,15 @@ public class IndexingServiceImpl implements IndexingService {
     private static final Pattern URL_PATTERN = Pattern.compile("(?<root>https?://[^/]+)?(?<path>.+)");
     private boolean isStarted = false;
     private final SitesList sites;
-    private List<SiteParserHandler> handlers = new ArrayList<>();
+    private List<SiteParserHandler> handlers;
+    private List<Thread> threads;
 
     public static int id;
 
     @Override
     public int startIndexing() {
-        List<Thread> threads = new ArrayList<>();
+        handlers = new ArrayList<>();
+        threads = new ArrayList<>();
 
         if (isStarted)
             return -1;
@@ -34,20 +36,14 @@ public class IndexingServiceImpl implements IndexingService {
         createSiteParserHandlers();
 
         for (SiteParserHandler handler : handlers) {
-            Thread thread = new Thread(handler);
-            thread.start();
-            threads.add(thread);
+            threads.add(new Thread(handler));
         }
 
         for (Thread thread : threads) {
-            try {
-                thread.join();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+            thread.start();
         }
 
-        isStarted = false;
+//        isStarted = false;
 
         return 0;
     }
@@ -61,6 +57,11 @@ public class IndexingServiceImpl implements IndexingService {
             handler.stopParsing();
         }
 
+        for (Thread thread : threads) {
+            thread.interrupt();
+        }
+
+        isStarted = false;
         return 0;
     }
 
@@ -75,7 +76,9 @@ public class IndexingServiceImpl implements IndexingService {
             int index = Collections.binarySearch(sortedSites, s);
 
             if (index > -1) {
-                PageIndexer indexer = new PageIndexer(url);
+                String root = matcher.group("root");
+                String path = matcher.group("path");
+                PageIndexer indexer = new PageIndexer(root, path);
                 indexer.index();
 
                 return 0;

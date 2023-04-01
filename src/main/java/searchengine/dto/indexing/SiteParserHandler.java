@@ -1,18 +1,16 @@
 package searchengine.dto.indexing;
 
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import searchengine.dao.Dao;
 import searchengine.dao.PageDao;
 import searchengine.dao.SiteDao;
 import searchengine.model.Page;
 import searchengine.model.Site;
 import searchengine.model.Status;
-import searchengine.services.IndexingServiceImpl;
 
 import java.util.Date;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.concurrent.ForkJoinPool;
 
 @RequiredArgsConstructor
@@ -21,6 +19,7 @@ public class SiteParserHandler implements Runnable {
     private SiteParser parser;
     private final Dao<Page> pageDao = new PageDao();
     private final Dao<Site> siteDao = new SiteDao();
+    private boolean stop = false;
 
     public SiteParserHandler(searchengine.config.Site site) {
         this.site = site;
@@ -28,50 +27,39 @@ public class SiteParserHandler implements Runnable {
 
     private HashSet<Page> getPagesFromSite(Site site) {
         this.parser = new SiteParser(site);
+        this.parser.setStop(false);
         return new ForkJoinPool().invoke(parser);
     }
 
-    private void saveSite(searchengine.config.Site site) {
-        Site s = new Site();
-        s.setStatus(Status.INDEXING);
-        s.setStatusTime(new Date(System.currentTimeMillis()));
-        s.setLastError(null);
-        s.setUrl(site.getUrl());
-        s.setName(site.getName());
-
-        if (isSiteExists(s.getId())) {
+    private void saveOrUpdateSite(Site s) {
+        if (isSiteExists(s)) {
             siteDao.update(s);
         } else {
             siteDao.save(s);
         }
+    }
 
-        HashSet<Page> pages = getPagesFromSite(s);
-        pages.removeIf(page -> page.getContent() == null);
+    private boolean isSiteExists(Site s) {
+        Optional<Site> opt = siteDao.get(s);
 
-        int savePagesStatus = savePages(pages);
-
-        if (savePagesStatus == 0) {
-            s.setStatus(Status.INDEXED);
-            s.setPages(pages);
-        } else {
-            s.setStatus(Status.FAILED);
+        if (!opt.isPresent()) {
+            return false;
         }
 
-        siteDao.update(s);
+        s.setId(opt.get().getId());
+        s.setLastError(opt.get().getLastError());
+        s.setPages(opt.get().getPages());
+        return true;
     }
 
-    private boolean isSiteExists(int id) {
-        return siteDao.get(id).isPresent();
-    }
-
-    private boolean isPageExists(int id) {
-        return pageDao.get(id).isPresent();
+    private boolean isPageExists(Page p) {
+        return pageDao.get(p).isPresent();
     }
 
     private int savePages(HashSet<Page> pages) {
         if (pages != null) {
             for (Page p : pages) {
-                if (!isPageExists(p.getId()))
+                if (!isPageExists(p))
                     pageDao.save(p);
             }
 
@@ -83,10 +71,38 @@ public class SiteParserHandler implements Runnable {
 
     @Override
     public void run() {
-        saveSite(site);
+        Site s = createSiteInstance(site);
+        saveOrUpdateSite(s);
+
+
+        HashSet<Page> pages = getPagesFromSite(s);
+        if (pages != null) {
+            pages.removeIf(page -> page.getContent() == null);
+            s.setPages(pages);
+            savePages(pages);
+            saveOrUpdateSite(s);
+        }
+
+        if (stop)
+            return;
+
+        s.setStatus(Status.INDEXED);
+        saveOrUpdateSite(s);
     }
 
     public void stopParsing() {
+        stop = true;
         parser.stop();
+    }
+
+    public Site createSiteInstance(searchengine.config.Site site) {
+        Site s = new Site();
+        s.setStatus(Status.INDEXING);
+        s.setStatusTime(new Date(System.currentTimeMillis()));
+        s.setLastError(null);
+        s.setUrl(site.getUrl());
+        s.setName(site.getName());
+
+        return s;
     }
 }

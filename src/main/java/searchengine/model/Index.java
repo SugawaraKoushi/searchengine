@@ -8,7 +8,7 @@ import javax.persistence.*;
 @Getter
 @Setter
 @Entity
-@Table (name = "\"index\"")
+@Table (name = "\"indexes\"")
 public class Index {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -23,6 +23,6 @@ public class Index {
     @JoinColumn(name = "lemma_id", nullable = false)
     private Lemma lemma;
 
-    @Column(name = "\"rank\"", nullable = false)
+    @Column(name = "\"index_rank\"", nullable = false)
     private float rank;
 }

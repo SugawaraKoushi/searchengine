@@ -151,4 +151,8 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
     public void stop() {
         stop = true;
     }
+
+    public void setStop(boolean value) {
+        stop = value;
+    }
 }

@@ -39,7 +39,7 @@ public class Page implements Serializable {
     @Override
     public int hashCode() {
         int result = id;
-        result = result * 31 + (path != null ? path.hashCode() : 0);
+        result += result * 31 + (path != null ? path.hashCode() : 0);
         result += code;
         result += result * 31 + (content != null ? content.hashCode() : 0);
         return result;

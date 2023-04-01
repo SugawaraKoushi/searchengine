@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import searchengine.model.Page;
+import searchengine.model.Site;
 import searchengine.util.HibernateUtil;
 
 import java.util.List;
@@ -25,9 +26,18 @@ public class PageDao implements Dao<Page> {
 
     public Optional<Page> get(Page page) {
         Session session = sessionFactory.openSession();
-        String query = "from " + Page.class.getSimpleName() + " where path like " + page.getPath() + " and content like "
-                + page.getContent() + " and site_id = " + page.getSite().getId();
-        Page p = session.createQuery(query, Page.class).getSingleResult();
+        Page p = null;
+
+        try {
+            String query = "from " + Page.class.getSimpleName() +
+//                    " p join " + Site.class.getSimpleName() + " s on p.site_id = s.id" +
+                    " where path like '" + page.getPath() + "'";
+            p = session.createQuery(query, Page.class).getSingleResult();
+        } catch (Exception e) {
+            //..
+        } finally {
+            session.close();
+        }
 
         return p == null ? Optional.empty() : Optional.of(p);
     }

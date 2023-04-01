@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import searchengine.model.Site;
 import searchengine.util.HibernateUtil;
 
+import javax.persistence.NoResultException;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,9 +25,15 @@ public class SiteDao implements Dao<Site> {
 
     public Optional<Site> get(Site site) {
         Session session = sessionFactory.openSession();
-        String query = "from " + Site.class.getSimpleName() + " where url like '" + site.getUrl() + "'";
-        Site s = session.createQuery(query, Site.class).getSingleResult();
-        session.close();
+        String query = "from " + Site.class.getSimpleName() + " where url like '%" + site.getUrl() + "%'";
+        Site s = null;
+        try {
+            s = session.createQuery(query, Site.class).getSingleResult();
+        } catch (NoResultException e) {
+            //..
+        } finally {
+            session.close();
+        }
 
         return s == null ? Optional.empty() : Optional.of(s);
     }
