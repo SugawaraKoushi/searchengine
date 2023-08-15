@@ -38,10 +38,8 @@ public class IndexDao implements Dao<Index> {
         String query = "from " + Index.class.getSimpleName() + " where page_id = " + page.getId();
         List<Index> indexes = session.createQuery(query).getResultList();
 
-
         return indexes.isEmpty() ? Optional.empty() : Optional.of(indexes);
     }
-
 
     @Override
     public Optional<List<Index>> getAll() {

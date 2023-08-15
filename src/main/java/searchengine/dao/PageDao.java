@@ -17,6 +17,7 @@ public class PageDao implements Dao<Page> {
     private final Logger logger = LoggerFactory.getLogger(PageDao.class);
     @Autowired
     private final SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
+
     @Override
     public Optional<Page> get(int id) {
         Session session = sessionFactory.openSession();
@@ -26,15 +27,14 @@ public class PageDao implements Dao<Page> {
 
     public Optional<Page> get(Page page) {
         Session session = sessionFactory.openSession();
-        Page p = null;
+        Page p;
 
         try {
-            String query = "from " + Page.class.getSimpleName() +
-//                    " p join " + Site.class.getSimpleName() + " s on p.site_id = s.id" +
-                    " where path like '" + page.getPath() + "'";
+            String query = "from " + Page.class.getSimpleName() + " where path = '" + page.getPath() +
+                    "' and site_id = " + page.getSite().getId();
             p = session.createQuery(query, Page.class).getSingleResult();
         } catch (Exception e) {
-            //..
+            p = null;
         } finally {
             session.close();
         }

@@ -26,7 +26,7 @@ public class LemmaDao implements Dao<Lemma>{
     @Override
     public Optional<Lemma> get(Lemma lemma) {
         Session session = sessionFactory.openSession();
-        String query = "from " + Site.class.getSimpleName() + " where lemma like '" + lemma.getLemma() + "'";
+        String query = "from " + Lemma.class.getSimpleName() + " where lemma = '" + lemma.getLemma() + "'";
         Lemma l = session.createQuery(query, Lemma.class).getSingleResult();
         session.close();
 
