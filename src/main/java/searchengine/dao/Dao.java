@@ -8,6 +8,8 @@ public interface Dao<T> {
 
     Optional<T> get(T t);
 
+    Optional<List<T>> getList(T t);
+
     Optional<List<T>> getAll();
 
     void save(T t);

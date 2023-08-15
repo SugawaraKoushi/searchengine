@@ -6,9 +6,11 @@ import searchengine.config.Site;
 import searchengine.config.SitesList;
 import searchengine.dto.indexing.PageIndexer;
 import searchengine.dto.indexing.SiteParserHandler;
+import searchengine.model.Status;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -68,17 +70,25 @@ public class IndexingServiceImpl implements IndexingService {
     @Override
     public int indexPage(String url) {
         Matcher matcher = URL_PATTERN.matcher(url);
-        Site s = new Site();
+        Site site = new Site();
+
 
         if (matcher.find()) {
             List<Site> sortedSites = sites.getSites().stream().sorted().toList();
-            s.setUrl(matcher.group("root"));
-            int index = Collections.binarySearch(sortedSites, s);
+            site.setUrl(matcher.group("root"));
+            int index = Collections.binarySearch(sortedSites, site);
 
             if (index > -1) {
                 String root = matcher.group("root");
                 String path = matcher.group("path");
-                PageIndexer indexer = new PageIndexer(root, path);
+
+                searchengine.model.Site s = new searchengine.model.Site();
+                s.setName(site.getName());
+                s.setStatus(Status.INDEXING);
+                s.setStatusTime(new Date());
+                s.setUrl(root);
+
+                PageIndexer indexer = new PageIndexer(s, path);
                 indexer.index();
 
                 return 0;

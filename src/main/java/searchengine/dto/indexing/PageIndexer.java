@@ -10,6 +10,7 @@ import searchengine.model.Page;
 import searchengine.model.Site;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
 
@@ -19,23 +20,23 @@ public class PageIndexer {
     private final Dao<Index> indexDao = new IndexDao();
     private final Dao<Page> pageDao = new PageDao();
     private final Dao<Site> siteDao = new SiteDao();
-    private final String root;
+    private final Site site;
     private final String path;
     private static final LemmaFinder lemmaFinder = LemmaFinder.getInstance();
+
     public void index() {
-        int siteId = getSiteId();
+        Site site = getSite();
 
-        if (siteId != -1) {
-            int pageId = getPageId(siteId);
-
-            if (pageId == -1) {
-                //...
-            }
+        if (site == null) {
+            saveSite();
+            site = getSite();
         }
+
+
 
         String text = getTextFromPage();
         HashMap<String, Integer> lemmasMap = lemmaFinder.getLemmas(text);
-
+        
     }
 
     private String getTextFromPage() {
@@ -56,12 +57,10 @@ public class PageIndexer {
         return text;
     }
 
-    private int getSiteId() {
-        Site s = new Site();
-        s.setUrl(root);
-        Optional<Site> optional = siteDao.get(s);
+    private Site getSite() {
+        Optional<Site> optional = siteDao.get(site);
 
-        return optional.map(Site::getId).orElse(-1);
+        return optional.orElse(null);
     }
 
     private int getPageId(int siteId) {
@@ -74,5 +73,16 @@ public class PageIndexer {
 
         Optional<Page> optional = pageDao.get(p);
         return optional.map(Page::getId).orElse(-1);
+    }
+
+    private void saveSite() {
+        siteDao.save(site);
+    }
+
+
+    private void deleteLemmasAndIndexes(Page page) {
+        Optional<List<Index>> optional = indexDao.getList(page);
+
+
     }
 }

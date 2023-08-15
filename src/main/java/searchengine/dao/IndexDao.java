@@ -5,6 +5,7 @@ import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.springframework.beans.factory.annotation.Autowired;
 import searchengine.model.Index;
+import searchengine.model.Page;
 import searchengine.model.Site;
 import searchengine.util.HibernateUtil;
 
@@ -23,14 +24,24 @@ public class IndexDao implements Dao<Index> {
         return index == null ? Optional.empty() : Optional.of(index);
     }
 
+    @Override
     public Optional<Index> get(Index index) {
         Session session = sessionFactory.openSession();
-        String query = "from " + Site.class.getSimpleName() + " where lemma_id = " + index.getLemma().getId();
         Index i = session.createQuery("from", Index.class).getSingleResult();
         session.close();
 
         return i == null ? Optional.empty() : Optional.of(i);
     }
+
+    public Optional<List<Index>> getList(Page page) {
+        Session session = sessionFactory.openSession();
+        String query = "from " + Index.class.getSimpleName() + " where page_id = " + page.getId();
+        List<Index> indexes = session.createQuery(query).getResultList();
+
+
+        return indexes.isEmpty() ? Optional.empty() : Optional.of(indexes);
+    }
+
 
     @Override
     public Optional<List<Index>> getAll() {
