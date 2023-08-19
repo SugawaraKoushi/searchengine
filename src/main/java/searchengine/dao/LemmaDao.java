@@ -8,6 +8,7 @@ import searchengine.model.Lemma;
 import searchengine.model.Site;
 import searchengine.util.HibernateUtil;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,8 +28,15 @@ public class LemmaDao implements Dao<Lemma>{
     public Optional<Lemma> get(Lemma lemma) {
         Session session = sessionFactory.openSession();
         String query = "from " + Lemma.class.getSimpleName() + " where lemma = '" + lemma.getLemma() + "'";
-        Lemma l = session.createQuery(query, Lemma.class).getSingleResult();
-        session.close();
+        Lemma l;
+
+        try {
+            l = session.createQuery(query, Lemma.class).getSingleResult();
+        } catch (Exception e) {
+            l = null;
+        } finally {
+            session.close();
+        }
 
         return l == null ? Optional.empty() : Optional.of(l);
     }
@@ -36,8 +44,15 @@ public class LemmaDao implements Dao<Lemma>{
     @Override
     public Optional<List<Lemma>> getAll() {
         Session session = sessionFactory.openSession();
-        List<Lemma> lemmas = session.createQuery("from", Lemma.class).list();
-        session.close();
+        List<Lemma> lemmas;
+
+        try {
+            lemmas = session.createQuery("from " + Lemma.class.getSimpleName(), Lemma.class).getResultList();
+        } catch (Exception e) {
+            lemmas = new ArrayList<>();
+        } finally {
+            session.close();
+        }
 
         return Optional.of(lemmas);
     }

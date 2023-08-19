@@ -4,21 +4,28 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import searchengine.config.Site;
 import searchengine.config.SitesList;
+import searchengine.dao.LemmaDao;
+import searchengine.dao.PageDao;
 import searchengine.dto.statistics.DetailedStatisticsItem;
 import searchengine.dto.statistics.StatisticsData;
 import searchengine.dto.statistics.StatisticsResponse;
 import searchengine.dto.statistics.TotalStatistics;
+import searchengine.model.Lemma;
+import searchengine.model.Page;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
 public class StatisticsServiceImpl implements StatisticsService {
-
     private final Random random = new Random();
     private final SitesList sites;
+
+    private final PageDao pageDao = new PageDao();
+    private final LemmaDao lemmaDao = new LemmaDao();
 
     @Override
     public StatisticsResponse getStatistics() {
@@ -40,8 +47,8 @@ public class StatisticsServiceImpl implements StatisticsService {
             DetailedStatisticsItem item = new DetailedStatisticsItem();
             item.setName(site.getName());
             item.setUrl(site.getUrl());
-            int pages = random.nextInt(1_000);
-            int lemmas = pages * random.nextInt(1_000);
+            int pages = getPagesCount();
+            int lemmas = getLemmasCount();
             item.setPages(pages);
             item.setLemmas(lemmas);
             item.setStatus(statuses[i % 3]);
@@ -60,5 +67,19 @@ public class StatisticsServiceImpl implements StatisticsService {
         response.setStatistics(data);
         response.setResult(true);
         return response;
+    }
+
+    private int getPagesCount() {
+        Optional<List<Page>> optional = pageDao.getAll();
+        List<Page> pages = optional.orElse(new ArrayList<>());
+
+        return pages.size();
+    }
+
+    private int getLemmasCount() {
+        Optional<List<Lemma>> optional = lemmaDao.getAll();
+        List<Lemma> lemmas = optional.orElse(new ArrayList<>());
+
+        return lemmas.size();
     }
 }

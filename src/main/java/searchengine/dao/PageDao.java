@@ -10,6 +10,7 @@ import searchengine.model.Page;
 import searchengine.model.Site;
 import searchengine.util.HibernateUtil;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -45,8 +46,15 @@ public class PageDao implements Dao<Page> {
     @Override
     public Optional<List<Page>> getAll() {
         Session session = sessionFactory.openSession();
-        List<Page> pages = session.createQuery("from", Page.class).getResultList();
-        session.close();
+        List<Page> pages;
+
+        try {
+            pages = session.createQuery("from " + Page.class.getSimpleName(), Page.class).getResultList();
+        } catch (Exception e) {
+            pages = new ArrayList<>();
+        } finally {
+            session.close();
+        }
 
         return Optional.of(pages);
     }

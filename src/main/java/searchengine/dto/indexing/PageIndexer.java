@@ -24,7 +24,6 @@ public class PageIndexer {
 
         if (site == null) {
             saveSite();
-            site = getSite();
         }
 
         Page page = getPage(path, site);
@@ -36,6 +35,7 @@ public class PageIndexer {
         }
 
         page = parsePage(path);
+        page.setSite(site);
         savePage(page);
 
         if (page.getCode() >= 400) {
@@ -75,7 +75,6 @@ public class PageIndexer {
         int code = 400;
         Connection.Response response = null;
 
-        page.setSite(site);
         page.setPath(path);
 
         try {
@@ -91,7 +90,6 @@ public class PageIndexer {
             content = content.replaceAll("'", "\\\\'");
             content = content.replaceAll("\"", "\\\\\"");
             page.setContent(content);
-
 
         } catch (Exception e) {
             if (response != null) {

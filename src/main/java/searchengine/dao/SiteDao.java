@@ -25,12 +25,12 @@ public class SiteDao implements Dao<Site> {
 
     public Optional<Site> get(Site site) {
         Session session = sessionFactory.openSession();
-        String query = "from " + Site.class.getSimpleName() + " where url like '%" + site.getUrl() + "%'";
-        Site s = null;
+        String query = "from " + Site.class.getSimpleName() + " where url = '" + site.getUrl() + "'";
+        Site s;
         try {
             s = session.createQuery(query, Site.class).getSingleResult();
         } catch (NoResultException e) {
-            //..
+            s = null;
         } finally {
             session.close();
         }

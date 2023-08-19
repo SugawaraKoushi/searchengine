@@ -77,6 +77,7 @@ public class IndexingServiceImpl implements IndexingService {
             List<Site> sortedSites = sites.getSites().stream().sorted().toList();
             site.setUrl(matcher.group("root"));
             int index = Collections.binarySearch(sortedSites, site);
+            site = sortedSites.get(index);
 
             if (index > -1) {
                 String root = matcher.group("root");
