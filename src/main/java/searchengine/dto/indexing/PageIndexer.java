@@ -15,70 +15,65 @@ public class PageIndexer {
     private final IndexDao indexDao = new IndexDao();
     private final Dao<Page> pageDao = new PageDao();
     private final Dao<Site> siteDao = new SiteDao();
-    private final Site site;
-    private final String path;
+
+    private Site site;
+    private Page page;
+
     private static final LemmaFinder lemmaFinder = LemmaFinder.getInstance();
 
+    public PageIndexer(Site site, Page page) {
+        this.site = site;
+        this.page = page;
+    }
+
     public void index() {
-        Site site = getSite();
-
-        if (site == null) {
+        Site s = getSite();
+        if (s == null) {
             saveSite();
+        } else {
+            site = s;
+            page.setSite(site);
         }
 
-        Page page = getPage(path, site);
+        if (page.getCode() == 0) {
+            Page p = getPage();
+            if (p != null) {
+                page = p;
+                deleteLemmas();
+                deleteIndexes();
+                deletePage();
+            }
 
-        if (page != null) {
-            deleteLemmas(page);
-            deleteIndexes(page);
-            deletePage(page);
-        }
+            parsePage();
+            page = savePage();
 
-        page = parsePage(path);
-        page.setSite(site);
-        savePage(page);
-
-        if (page.getCode() >= 400) {
-            return;
+            if (page.getCode() >= 400) {
+                return;
+            }
         }
 
         String text = getTextFromPage(page.getContent());
         HashMap<String, Integer> lemmasMap = lemmaFinder.getLemmas(text);
 
         for (Map.Entry<String, Integer> entry : lemmasMap.entrySet()) {
-            Lemma lemma = new Lemma();
-            lemma.setSite(site);
-            lemma.setLemma(entry.getKey());
-            lemma.setFrequency(entry.getValue());
-
-            Optional<Lemma> optional = lemmaDao.get(lemma);
-            Lemma l = optional.orElse(null);
-
+            Lemma l = getLemma(entry.getKey());
             if (l == null) {
-                lemmaDao.save(lemma);
+                l = saveLemma(entry.getKey(), entry.getValue());
             } else {
-                lemma = l;
-                lemma.setFrequency(lemma.getFrequency() + entry.getValue());
-                lemmaDao.update(lemma);
+                l.setFrequency(l.getFrequency() + entry.getValue());
+                lemmaDao.update(l);
             }
 
-            Index index = new Index();
-            index.setPage(page);
-            index.setLemma(lemma);
-            index.setRank(lemma.getFrequency());
-            indexDao.save(index);
+            saveIndex(l);
         }
     }
 
-    private Page parsePage(String path) {
-        Page page = new Page();
+    private void parsePage() {
         int code = 400;
         Connection.Response response = null;
 
-        page.setPath(path);
-
         try {
-            response = Jsoup.connect(site.getUrl() + path)
+            response = Jsoup.connect(site.getUrl() + page.getPath())
                     .userAgent("BobTheSearcherBot")
                     .referrer("http://www.google.com")
                     .timeout(60000)
@@ -101,8 +96,6 @@ public class PageIndexer {
             page.setCode(code);
             updateSite(null, Status.INDEXED);
         }
-
-        return page;
     }
 
     private String getTextFromPage(String content) {
@@ -113,22 +106,54 @@ public class PageIndexer {
         return siteDao.get(site).orElse(null);
     }
 
-    private Page getPage(String path, Site site) {
-        Page page = new Page();
-        page.setPath(path);
-        page.setSite(site);
+    private Page getPage() {
+        return pageDao.get(page).orElse(null);
+    }
 
-        Optional<Page> optional = pageDao.get(page);
+    private Lemma getLemma(String lemma) {
+        Lemma l = new Lemma();
+        l.setLemma(lemma);
 
-        return optional.orElse(null);
+        return lemmaDao.get(l).orElse(null);
     }
 
     private void saveSite() {
+        if (site.getName() == null) {
+            site.setName(site.getUrl());
+        }
+
         siteDao.save(site);
     }
 
+    private Page savePage() {
+        Page p = new Page();
+        p.setSite(site);
+        p.setPath(page.getPath());
+        p.setCode(page.getCode());
+        p.setContent(page.getContent());
+
+        pageDao.save(p);
+        return p;
+    }
+
+    private Lemma saveLemma(String lemma, int frequency) {
+        Lemma l = new Lemma();
+        l.setSite(site);
+        l.setFrequency(frequency);
+        l.setLemma(lemma);
+        lemmaDao.save(l);
+        return l;
+    }
+
+    private void saveIndex(Lemma lemma) {
+        Index i = new Index();
+        i.setPage(page);
+        i.setLemma(lemma);
+        i.setRank(lemma.getFrequency());
+        indexDao.save(i);
+    }
+
     private void updateSite(String error, Status status) {
-        Site site = getSite();
         site.setLastError(error);
         site.setStatus(status);
         site.setStatusTime(new Date());
@@ -136,11 +161,7 @@ public class PageIndexer {
         siteDao.update(site);
     }
 
-    private void savePage(Page page) {
-        pageDao.save(page);
-    }
-
-    private void deleteLemmas(Page page) {
+    private void deleteLemmas() {
         Optional<List<Index>> opt1 = indexDao.getList(page);
         List<Index> indexes = opt1.orElse(new ArrayList<>());
 
@@ -167,7 +188,7 @@ public class PageIndexer {
         }
     }
 
-    private void deleteIndexes(Page page) {
+    private void deleteIndexes() {
         Optional<List<Index>> optional = indexDao.getList(page);
         List<Index> indexes = optional.orElse(new ArrayList<>());
 
@@ -175,12 +196,12 @@ public class PageIndexer {
             return;
         }
 
-        for (Index index: indexes) {
+        for (Index index : indexes) {
             indexDao.delete(index);
         }
     }
 
-    private void deletePage(Page page)  {
+    private void deletePage() {
         pageDao.delete(page);
     }
 }

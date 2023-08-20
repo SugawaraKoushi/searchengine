@@ -6,6 +6,7 @@ import searchengine.config.Site;
 import searchengine.config.SitesList;
 import searchengine.dto.indexing.PageIndexer;
 import searchengine.dto.indexing.SiteParserHandler;
+import searchengine.model.Page;
 import searchengine.model.Status;
 
 import java.util.ArrayList;
@@ -72,14 +73,13 @@ public class IndexingServiceImpl implements IndexingService {
         Matcher matcher = URL_PATTERN.matcher(url);
         Site site = new Site();
 
-
         if (matcher.find()) {
             List<Site> sortedSites = sites.getSites().stream().sorted().toList();
             site.setUrl(matcher.group("root"));
             int index = Collections.binarySearch(sortedSites, site);
-            site = sortedSites.get(index);
 
             if (index > -1) {
+                site = sortedSites.get(index);
                 String root = matcher.group("root");
                 String path = matcher.group("path");
 
@@ -89,7 +89,11 @@ public class IndexingServiceImpl implements IndexingService {
                 s.setStatusTime(new Date());
                 s.setUrl(root);
 
-                PageIndexer indexer = new PageIndexer(s, path);
+                Page p = new Page();
+                p.setPath(path);
+                p.setSite(s);
+
+                PageIndexer indexer = new PageIndexer(s, p);
                 indexer.index();
 
                 return 0;
