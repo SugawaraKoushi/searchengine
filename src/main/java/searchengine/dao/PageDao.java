@@ -23,6 +23,7 @@ public class PageDao implements Dao<Page> {
     public Optional<Page> get(int id) {
         Session session = sessionFactory.openSession();
         Page page = session.get(Page.class, id);
+        session.close();
         return page == null ? Optional.empty() : Optional.of(page);
     }
 

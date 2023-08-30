@@ -36,9 +36,9 @@ public class Site {
     @Column(name = "\"name\"", columnDefinition = "VARCHAR(255)", nullable = false)
     private String name;
 
-    @OneToMany(cascade = CascadeType.REMOVE, fetch = FetchType.LAZY, mappedBy = "site")
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "site")
     private Set<Page> pages;
 
-    @OneToMany(cascade = CascadeType.REMOVE, fetch = FetchType.LAZY, mappedBy = "site")
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "site")
     private List<Lemma> lemmas;
 }

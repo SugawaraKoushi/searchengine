@@ -33,7 +33,7 @@ public class Page implements Serializable {
     @Column(columnDefinition = "MEDIUMTEXT", nullable = false)
     private String content;
 
-    @OneToMany(cascade = CascadeType.REMOVE, fetch = FetchType.LAZY, mappedBy = "page")
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "page")
     private List<searchengine.model.Index> indexes;
 
     @Override

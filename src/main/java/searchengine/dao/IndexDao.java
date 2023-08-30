@@ -1,5 +1,6 @@
 package searchengine.dao;
 
+import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
@@ -15,6 +16,7 @@ import java.util.Optional;
 public class IndexDao implements Dao<Index> {
     @Autowired
     SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
+
     @Override
     public Optional<Index> get(int id) {
         Session session = sessionFactory.openSession();
@@ -37,6 +39,7 @@ public class IndexDao implements Dao<Index> {
         Session session = sessionFactory.openSession();
         String query = "from " + Index.class.getSimpleName() + " where page_id = " + page.getId();
         List<Index> indexes = session.createQuery(query).getResultList();
+        session.close();
 
         return indexes.isEmpty() ? Optional.empty() : Optional.of(indexes);
     }

@@ -7,6 +7,7 @@ import org.jsoup.nodes.Document;
 import searchengine.dao.*;
 import searchengine.model.*;
 
+import javax.transaction.Transactional;
 import java.util.*;
 
 @RequiredArgsConstructor
@@ -161,6 +162,7 @@ public class PageIndexer {
         siteDao.update(site);
     }
 
+    @Transactional
     private void deleteLemmas() {
         Optional<List<Index>> opt1 = indexDao.getList(page);
         List<Index> indexes = opt1.orElse(new ArrayList<>());
@@ -179,7 +181,9 @@ public class PageIndexer {
 
             int frequency = lemma.getFrequency() - Math.round(index.getRank());
 
-            if (frequency < 0) {
+            //indexDao.delete(index);
+
+            if (frequency <= 0) {
                 lemmaDao.delete(lemma);
             } else {
                 lemma.setFrequency(frequency);
