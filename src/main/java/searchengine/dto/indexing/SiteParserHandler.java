@@ -74,12 +74,17 @@ public class SiteParserHandler implements Runnable {
         Site s = createSiteInstance(site);
         saveOrUpdateSite(s);
 
-
         HashSet<Page> pages = getPagesFromSite(s);
         if (pages != null) {
             pages.removeIf(page -> page.getContent() == null);
             s.setPages(pages);
-            savePages(pages);
+
+            for (Page page : pages) {
+                PageIndexer indexer = new PageIndexer(s, page);
+                indexer.index();
+            }
+
+            //savePages(pages);
             saveOrUpdateSite(s);
         }
 

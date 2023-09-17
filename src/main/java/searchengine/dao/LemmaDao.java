@@ -8,11 +8,11 @@ import searchengine.model.Lemma;
 import searchengine.model.Site;
 import searchengine.util.HibernateUtil;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 public class LemmaDao implements Dao<Lemma>{
+    private final static int BATCH_SIZE = 20;
+
     @Autowired
     SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
     @Override
@@ -67,6 +67,23 @@ public class LemmaDao implements Dao<Lemma>{
         session.close();
     }
 
+    public void saveBatch(Collection<Lemma> lemmas) {
+        Session session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+        int i = 0;
+
+        for (Lemma lemma : lemmas) {
+            if (i > 0 && i % BATCH_SIZE == 0) {
+                session.flush();
+                session.clear();
+            }
+            session.persist(lemma);
+            i++;
+        }
+
+        session.close();
+    }
+
     @Override
     public void update(Lemma lemma) {
         Session session = sessionFactory.openSession();
@@ -74,6 +91,23 @@ public class LemmaDao implements Dao<Lemma>{
 
         session.merge(lemma);
         transaction.commit();
+        session.close();
+    }
+
+    public void updateBatch(Collection<Lemma> lemmas) {
+        Session session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+        int i = 0;
+
+        for (Lemma lemma : lemmas) {
+            if (i > 0 && i % BATCH_SIZE == 0) {
+                session.flush();
+                session.clear();
+            }
+            session.merge(lemma);
+            i++;
+        }
+
         session.close();
     }
 

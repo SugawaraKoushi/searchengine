@@ -6,14 +6,18 @@ import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.springframework.beans.factory.annotation.Autowired;
 import searchengine.model.Index;
+import searchengine.model.Lemma;
 import searchengine.model.Page;
 import searchengine.model.Site;
 import searchengine.util.HibernateUtil;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public class IndexDao implements Dao<Index> {
+    private final static int BATCH_SIZE = 20;
+
     @Autowired
     SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
 
@@ -60,6 +64,23 @@ public class IndexDao implements Dao<Index> {
 
         session.persist(index);
         transaction.commit();
+        session.close();
+    }
+
+    public void saveBatch(Collection<Index> indexes) {
+        Session session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+        int i = 0;
+
+        for (Index index : indexes) {
+            if (i > 0 && i % BATCH_SIZE == 0) {
+                session.flush();
+                session.clear();
+            }
+            session.persist(index);
+            i++;
+        }
+
         session.close();
     }
 

@@ -12,7 +12,7 @@ import java.util.*;
 
 @RequiredArgsConstructor
 public class PageIndexer {
-    private final Dao<Lemma> lemmaDao = new LemmaDao();
+    private final LemmaDao lemmaDao = new LemmaDao();
     private final IndexDao indexDao = new IndexDao();
     private final Dao<Page> pageDao = new PageDao();
     private final Dao<Site> siteDao = new SiteDao();
@@ -33,7 +33,9 @@ public class PageIndexer {
             saveSite();
         } else {
             site = s;
-            page.setSite(site);
+            if(page.getSite() == null) {
+                page.setSite(site);
+            }
         }
 
         if (page.getCode() == 0) {
@@ -51,21 +53,42 @@ public class PageIndexer {
             if (page.getCode() >= 400) {
                 return;
             }
+        } else {
+            page = savePage();
         }
 
         String text = getTextFromPage(page.getContent());
         HashMap<String, Integer> lemmasMap = lemmaFinder.getLemmas(text);
 
         for (Map.Entry<String, Integer> entry : lemmasMap.entrySet()) {
+            List<Lemma> lemmasToSave = new ArrayList<>();
+            List<Lemma> lemmasToUpdate = new ArrayList<>();
+            List<Lemma> lemmas = new ArrayList<>();
+            List<Index> indexes = new ArrayList<>();
+
             Lemma l = getLemma(entry.getKey());
             if (l == null) {
-                l = saveLemma(entry.getKey(), entry.getValue());
+                //l = saveLemma(entry.getKey(), entry.getValue());
+                l = createLemma(entry.getKey(), entry.getValue());
+                lemmasToSave.add(l);
             } else {
                 l.setFrequency(l.getFrequency() + entry.getValue());
-                lemmaDao.update(l);
+                lemmasToUpdate.add(l);
+                //lemmaDao.update(l);
             }
 
-            saveIndex(l);
+            lemmaDao.saveBatch(lemmasToSave);
+            lemmaDao.updateBatch(lemmasToUpdate);
+            lemmas.addAll(lemmasToSave);
+            lemmas.addAll(lemmasToUpdate);
+
+            for (Lemma lemma : lemmas) {
+                indexes.add(createIndex(lemma));
+            }
+
+            indexDao.saveBatch(indexes);
+
+            //saveIndex(l);
         }
     }
 
@@ -137,6 +160,14 @@ public class PageIndexer {
         return p;
     }
 
+    private Lemma createLemma(String lemma, int frequency) {
+        Lemma l = new Lemma();
+        l.setSite(site);
+        l.setFrequency(frequency);
+        l.setLemma(lemma);
+        return l;
+    }
+
     private Lemma saveLemma(String lemma, int frequency) {
         Lemma l = new Lemma();
         l.setSite(site);
@@ -160,6 +191,14 @@ public class PageIndexer {
         site.setStatusTime(new Date());
 
         siteDao.update(site);
+    }
+
+    private Index createIndex(Lemma lemma) {
+        Index index = new Index();
+        index.setPage(page);
+        index.setLemma(lemma);
+        index.setRank(lemma.getFrequency());
+        return index;
     }
 
     @Transactional
