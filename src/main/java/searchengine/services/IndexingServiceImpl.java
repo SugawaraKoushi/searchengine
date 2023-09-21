@@ -1,18 +1,23 @@
 package searchengine.services;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import searchengine.config.Site;
 import searchengine.config.SitesList;
+import searchengine.dao.IndexDao;
+import searchengine.dao.LemmaDao;
+import searchengine.dao.PageDao;
+import searchengine.dao.SiteDao;
+import searchengine.dto.indexing.LemmaFinder;
 import searchengine.dto.indexing.PageIndexer;
 import searchengine.dto.indexing.SiteParserHandler;
+import searchengine.model.Index;
+import searchengine.model.Lemma;
 import searchengine.model.Page;
 import searchengine.model.Status;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -24,8 +29,11 @@ public class IndexingServiceImpl implements IndexingService {
     private final SitesList sites;
     private List<SiteParserHandler> handlers;
     private List<Thread> threads;
-
-    public static int id;
+    private final SiteDao siteDao = new SiteDao();
+    private final LemmaDao lemmaDao = new LemmaDao();
+    private final PageDao pageDao = new PageDao();
+    private final IndexDao indexDao = new IndexDao();
+    private final LemmaFinder lemmaFinder = LemmaFinder.getInstance();
 
     @Override
     public int startIndexing() {
@@ -101,6 +109,56 @@ public class IndexingServiceImpl implements IndexingService {
         }
 
         return -1;
+    }
+
+    @Override
+    public int search(String query, String site, int offset, int limit) {
+        searchengine.model.Site s = new searchengine.model.Site();
+        s.setUrl(site);
+        s = siteDao.get(s).orElse(null);
+
+        if (s == null) {
+            return 0;
+        }
+
+        HashMap<String, Integer> lemmasMap = lemmaFinder.getLemmas(query);
+        List<Lemma> lemmasList = lemmaDao.getAll().orElse(null);
+
+        if (lemmasList == null || lemmasList.isEmpty()) {
+            return -1;
+        }
+
+        searchengine.model.Site tempS = s;
+        lemmasList = new ArrayList<>(lemmasList
+                .stream()
+                .filter(l -> l.getSite().equals(tempS) && lemmasMap.containsKey(l.getLemma()))
+                .toList());
+
+        lemmasList.sort(Lemma::compareTo);
+
+        List<Page> pagesList = new ArrayList<>();
+        List<Index> indexList = new ArrayList<>();
+        List<Lemma> finalLemmasList = lemmasList;
+
+        for (int i = 0; i < lemmasList.size(); i++) {
+
+            if (i == 0) {
+                indexList = indexDao.getListByLemma(lemmasList.get(i)).orElse(null);
+
+                if (indexList == null || indexList.isEmpty()) {
+                    return -1;
+                }
+            } else {
+                List<Index> temp = indexDao.getListByLemma(lemmasList.get(i)).orElse(null);
+                indexList.removeIf(index -> temp.stream().noneMatch(e -> e.getPage().equals(index.getPage())));
+            }
+        }
+
+        for (Index index : indexList) {
+            pageDao.get(index.getPage().getId()).ifPresent(pagesList::add);
+        }
+
+        return 1;
     }
 
     private void createSiteParserHandlers() {

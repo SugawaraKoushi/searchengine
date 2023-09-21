@@ -1,6 +1,5 @@
 package searchengine.dao;
 
-import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
@@ -8,7 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import searchengine.model.Index;
 import searchengine.model.Lemma;
 import searchengine.model.Page;
-import searchengine.model.Site;
 import searchengine.util.HibernateUtil;
 
 import java.util.Collection;
@@ -39,7 +37,16 @@ public class IndexDao implements Dao<Index> {
         return i == null ? Optional.empty() : Optional.of(i);
     }
 
-    public Optional<List<Index>> getList(Page page) {
+    public Optional<List<Index>> getListByLemma(Lemma lemma) {
+        Session session = sessionFactory.openSession();
+        String query = "from " + Index.class.getSimpleName() + " where lemma_id = " + lemma.getId();
+        List<Index> indexes = session.createQuery(query).getResultList();
+        session.close();
+
+        return indexes.isEmpty() ? Optional.empty() : Optional.of(indexes);
+    }
+
+    public Optional<List<Index>> getListByPage(Page page) {
         Session session = sessionFactory.openSession();
         String query = "from " + Index.class.getSimpleName() + " where page_id = " + page.getId();
         List<Index> indexes = session.createQuery(query).getResultList();

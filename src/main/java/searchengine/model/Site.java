@@ -6,6 +6,7 @@ import org.hibernate.annotations.NotFound;
 import org.hibernate.annotations.NotFoundAction;
 
 import javax.persistence.*;
+import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
@@ -14,7 +15,7 @@ import java.util.Set;
 @Setter
 @Entity
 @Table
-public class Site {
+public class Site implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(nullable = false)
@@ -41,4 +42,28 @@ public class Site {
 
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "site")
     private List<Lemma> lemmas;
+
+    @Override
+    public int hashCode() {
+        int result = id;
+        result += result * 31 + (lastError.isEmpty() ? 0 : lastError.hashCode());
+        result += result * 31 + (url.isEmpty() ? 0 : url.hashCode());
+        result += result * 31 + (name.isEmpty() ? 0 : name.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+
+        if (obj instanceof Site s) {
+            if (!s.url.isBlank()) {
+                return this.url.equals(s.url);
+            }
+        }
+
+        return false;
+    }
 }

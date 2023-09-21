@@ -6,6 +6,8 @@ import lombok.Setter;
 import javax.persistence.*;
 import javax.persistence.Index;
 import java.io.Serializable;
+
+import java.util.Comparator;
 import java.util.List;
 
 @Getter
@@ -47,11 +49,9 @@ public class Page implements Serializable {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj){
             return true;
-
-        if (obj == null)
-            return false;
+        }
 
         if (obj instanceof Page p) {
             if (p.path != null)

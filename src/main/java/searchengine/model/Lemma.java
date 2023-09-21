@@ -4,13 +4,15 @@ import lombok.Getter;
 import lombok.Setter;
 
 import javax.persistence.*;
+import java.io.Serializable;
+import java.util.Comparator;
 import java.util.List;
 
 @Getter
 @Setter
 @Entity
 @Table
-public class Lemma {
+public class Lemma implements Serializable, Comparable<Lemma>{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(nullable = false)
@@ -28,4 +30,32 @@ public class Lemma {
 
     @OneToMany(cascade = CascadeType.REMOVE, fetch = FetchType.EAGER, mappedBy = "lemma")
     private List<Index> indexes;
+
+    @Override
+    public int hashCode() {
+        int result = id;
+        result += result * 31 + (lemma.isBlank() ? 0 : lemma.hashCode());
+        result += result * 31 + frequency;
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+
+        if (obj instanceof Lemma l) {
+            if (!l.lemma.isBlank()) {
+                return l.lemma.equals(this.lemma);
+            }
+        }
+
+        return false;
+    }
+
+    @Override
+    public int compareTo(Lemma l) {
+        return Integer.compare(this.frequency, l.frequency);
+    }
 }

@@ -203,7 +203,7 @@ public class PageIndexer {
 
     @Transactional
     private void deleteLemmas() {
-        Optional<List<Index>> opt1 = indexDao.getList(page);
+        Optional<List<Index>> opt1 = indexDao.getListByPage(page);
         List<Index> indexes = opt1.orElse(new ArrayList<>());
 
         if (indexes.isEmpty()) {
@@ -232,7 +232,7 @@ public class PageIndexer {
     }
 
     private void deleteIndexes() {
-        Optional<List<Index>> optional = indexDao.getList(page);
+        Optional<List<Index>> optional = indexDao.getListByPage(page);
         List<Index> indexes = optional.orElse(new ArrayList<>());
 
         if (indexes.isEmpty()) {

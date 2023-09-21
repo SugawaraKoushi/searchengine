@@ -1,10 +1,10 @@
 package searchengine.controllers;
 
+import org.springframework.data.repository.config.RepositoryConfigurationSource;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.lang.Nullable;
+import org.springframework.web.bind.annotation.*;
+import searchengine.config.Site;
 import searchengine.dto.statistics.StatisticsResponse;
 import searchengine.services.IndexingService;
 import searchengine.services.StatisticsService;
@@ -53,5 +53,38 @@ public class ApiController {
                     "указанных в конфигурационном файле\" }";
             return ResponseEntity.status(400).body(responseText);
         }
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<String> search(String query, int offset, int limit, String site) {
+        String responseText;
+
+        int searchResponse = indexingService.search(query, site, offset, limit);
+
+        switch(searchResponse) {
+            case -1:
+                responseText = """
+                    {
+                    \t"result": false,
+                    \t"error": "Страницы не найдены"
+                    }
+                    """;
+                break;
+
+            case 0:
+                responseText = """
+                    {
+                    \t"result": false,
+                    \t"error": "Сайт не проиндексирован"
+                    }
+                    """;
+                break;
+            default:
+                responseText = "";
+                break;
+        }
+
+
+        return ResponseEntity.ok(responseText);
     }
 }
