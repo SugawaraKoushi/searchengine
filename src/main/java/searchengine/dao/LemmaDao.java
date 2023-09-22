@@ -5,7 +5,6 @@ import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.springframework.beans.factory.annotation.Autowired;
 import searchengine.model.Lemma;
-import searchengine.model.Site;
 import searchengine.util.HibernateUtil;
 
 import java.util.*;
@@ -116,7 +115,7 @@ public class LemmaDao implements Dao<Lemma>{
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
 
-        session.delete(lemma);
+        session.remove(lemma);
         transaction.commit();
         session.close();
     }

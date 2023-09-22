@@ -1,7 +1,8 @@
 package searchengine.services;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.lang.Nullable;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import org.springframework.stereotype.Service;
 import searchengine.config.Site;
 import searchengine.config.SitesList;
@@ -158,6 +159,36 @@ public class IndexingServiceImpl implements IndexingService {
             pageDao.get(index.getPage().getId()).ifPresent(pagesList::add);
         }
 
+        HashMap<Page, Double> foundPages = new HashMap<>();
+        double maxRelevance = 0.0;
+        for (Page page : pagesList) {
+            for (Lemma lemma : lemmasList) {
+                Index index = indexList
+                        .stream()
+                        .filter(i -> i.getLemma() == lemma && i.getPage() == page)
+                        .findFirst()
+                        .orElse(null);
+                double rank = index.getRank();
+
+                if (!foundPages.containsKey(page)) {
+                    foundPages.put(page, rank);
+                } else {
+                    double relevance = foundPages.get(page) + rank;
+                    maxRelevance = Math.max(maxRelevance, relevance);
+                    foundPages.put(page, relevance);
+                }
+            }
+        }
+
+        for (Map.Entry<Page, Double> entry : foundPages.entrySet()) {
+            foundPages.put(entry.getKey(), entry.getValue() / maxRelevance);
+        }
+
+        List<Map.Entry<Page, Double>> sortedByRelevance = new ArrayList<>(foundPages.entrySet());
+        sortedByRelevance.sort(Map.Entry.comparingByValue());
+
+        String result = searchSuccessMessage(sortedByRelevance, limit, s);
+
         return 1;
     }
 
@@ -165,5 +196,40 @@ public class IndexingServiceImpl implements IndexingService {
         for (searchengine.config.Site site : sites.getSites()) {
             handlers.add(new SiteParserHandler(site));
         }
+    }
+
+    private String searchSuccessMessage(List<Map.Entry<Page, Double>> sortedPages, int limit, searchengine.model.Site site) {
+        StringBuilder result = new StringBuilder();
+        result.append(String.format("""
+                {
+                    'result': true,
+                    'count': %d,
+                    'data': [
+                        {
+                """, sortedPages.size()));
+        for (int i = sortedPages.size() - 1; i >= sortedPages.size() - limit; i--) {
+            String title = getPageTitle(sortedPages.get(i).getKey());
+            String pageResult = String.format("""
+                                "site": %s,
+                                "siteName": %s,
+                                "uri": %s,
+                                "title": %s,
+                                "snippet": %s,
+                                "relevance": %f.3
+                    """, site.getUrl(), site.getName(), sortedPages.get(i).getKey().getPath(), title);
+            result.append(pageResult);
+        }
+        result.append("""
+                    }
+                }
+                """);
+
+        return result.toString();
+    }
+
+    private String getPageTitle(Page page) {
+        String content = page.getContent();
+        Document document = Jsoup.parse(content);
+        return document.title();
     }
 }

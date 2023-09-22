@@ -3,8 +3,8 @@ package searchengine.model;
 import lombok.Getter;
 import lombok.Setter;
 
-import javax.persistence.*;
-import javax.persistence.Index;
+import jakarta.persistence.*;
+import jakarta.persistence.Index;
 import java.io.Serializable;
 
 import java.util.Comparator;

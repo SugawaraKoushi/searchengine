@@ -7,7 +7,6 @@ import org.jsoup.nodes.Document;
 import searchengine.dao.*;
 import searchengine.model.*;
 
-import javax.transaction.Transactional;
 import java.util.*;
 
 @RequiredArgsConstructor
@@ -201,7 +200,6 @@ public class PageIndexer {
         return index;
     }
 
-    @Transactional
     private void deleteLemmas() {
         Optional<List<Index>> opt1 = indexDao.getListByPage(page);
         List<Index> indexes = opt1.orElse(new ArrayList<>());

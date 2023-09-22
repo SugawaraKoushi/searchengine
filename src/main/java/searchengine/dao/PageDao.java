@@ -7,7 +7,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import searchengine.model.Page;
-import searchengine.model.Site;
 import searchengine.util.HibernateUtil;
 
 import java.util.ArrayList;
@@ -84,7 +83,7 @@ public class PageDao implements Dao<Page> {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
 
-        session.delete(page);
+        session.remove(page);
         transaction.commit();
         session.close();
     }

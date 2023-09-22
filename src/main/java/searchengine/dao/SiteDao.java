@@ -1,5 +1,6 @@
 package searchengine.dao;
 
+import jakarta.persistence.NoResultException;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
@@ -7,7 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import searchengine.model.Site;
 import searchengine.util.HibernateUtil;
 
-import javax.persistence.NoResultException;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -72,7 +73,7 @@ public class SiteDao implements Dao<Site> {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
 
-        session.delete(site);
+        session.remove(site);
         transaction.commit();
         session.close();
     }

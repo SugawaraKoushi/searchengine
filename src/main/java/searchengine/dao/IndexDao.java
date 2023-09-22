@@ -1,8 +1,6 @@
 package searchengine.dao;
 
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
-import org.hibernate.Transaction;
+import org.hibernate.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import searchengine.model.Index;
 import searchengine.model.Lemma;
@@ -21,7 +19,8 @@ public class IndexDao implements Dao<Index> {
 
     @Override
     public Optional<Index> get(int id) {
-        Session session = sessionFactory.openSession();
+        Session session;
+        session = sessionFactory.openSession();
         Index index = session.get(Index.class, id);
         session.close();
 
@@ -40,7 +39,7 @@ public class IndexDao implements Dao<Index> {
     public Optional<List<Index>> getListByLemma(Lemma lemma) {
         Session session = sessionFactory.openSession();
         String query = "from " + Index.class.getSimpleName() + " where lemma_id = " + lemma.getId();
-        List<Index> indexes = session.createQuery(query).getResultList();
+        List<Index> indexes = session.createQuery(query, Index.class).getResultList();
         session.close();
 
         return indexes.isEmpty() ? Optional.empty() : Optional.of(indexes);
@@ -49,7 +48,7 @@ public class IndexDao implements Dao<Index> {
     public Optional<List<Index>> getListByPage(Page page) {
         Session session = sessionFactory.openSession();
         String query = "from " + Index.class.getSimpleName() + " where page_id = " + page.getId();
-        List<Index> indexes = session.createQuery(query).getResultList();
+        List<Index> indexes = session.createQuery(query, Index.class).getResultList();
         session.close();
 
         return indexes.isEmpty() ? Optional.empty() : Optional.of(indexes);
@@ -105,8 +104,7 @@ public class IndexDao implements Dao<Index> {
     public void delete(Index index) {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
-
-        session.delete(index);
+        session.remove(index);
         transaction.commit();
         session.close();
     }
