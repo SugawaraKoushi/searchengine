@@ -59,32 +59,8 @@ public class ApiController {
     public ResponseEntity<String> search(String query, int offset, int limit, String site) {
         String responseText;
 
-        int searchResponse = indexingService.search(query, site, offset, limit);
+        String searchResponse = indexingService.search(query, site, offset, limit);
 
-        switch(searchResponse) {
-            case -1:
-                responseText = """
-                    {
-                    \t"result": false,
-                    \t"error": "Страницы не найдены"
-                    }
-                    """;
-                break;
-
-            case 0:
-                responseText = """
-                    {
-                    \t"result": false,
-                    \t"error": "Сайт не проиндексирован"
-                    }
-                    """;
-                break;
-            default:
-                responseText = "";
-                break;
-        }
-
-
-        return ResponseEntity.ok(responseText);
+        return ResponseEntity.ok(searchResponse);
     }
 }

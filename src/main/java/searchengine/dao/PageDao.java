@@ -3,18 +3,18 @@ package searchengine.dao;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.hibernate.query.Query;
 import org.springframework.beans.factory.annotation.Autowired;
+import searchengine.model.Index;
 import searchengine.model.Page;
 import searchengine.util.HibernateUtil;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public class PageDao implements Dao<Page> {
-    private final Logger logger = LoggerFactory.getLogger(PageDao.class);
     @Autowired
     private final SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
 
@@ -57,6 +57,19 @@ public class PageDao implements Dao<Page> {
         }
 
         return Optional.of(pages);
+    }
+
+    public Optional<List<Page>> getListByIndexes(Collection<Index> indexes) {
+        Session session = sessionFactory.openSession();
+        List<Integer> i = new ArrayList<>();
+        indexes.forEach(index -> i.add(index.getPage().getId()));
+        Object[] ids = i.toArray();
+
+        Query<Page> query = session.createQuery("from Page where id in :ids");
+        query.setParameterList("ids", ids);
+        List<Page> pages = query.getResultList();
+
+        return pages.isEmpty() ? Optional.empty() : Optional.of(pages);
     }
 
     @Override

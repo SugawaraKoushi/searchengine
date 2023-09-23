@@ -1,6 +1,7 @@
 package searchengine.dao;
 
 import org.hibernate.*;
+import org.hibernate.query.Query;
 import org.springframework.beans.factory.annotation.Autowired;
 import searchengine.model.Index;
 import searchengine.model.Lemma;
@@ -23,7 +24,6 @@ public class IndexDao implements Dao<Index> {
         session = sessionFactory.openSession();
         Index index = session.get(Index.class, id);
         session.close();
-
         return index == null ? Optional.empty() : Optional.of(index);
     }
 
@@ -32,26 +32,35 @@ public class IndexDao implements Dao<Index> {
         Session session = sessionFactory.openSession();
         Index i = session.createQuery("from", Index.class).getSingleResult();
         session.close();
-
         return i == null ? Optional.empty() : Optional.of(i);
     }
 
     public Optional<List<Index>> getListByLemma(Lemma lemma) {
         Session session = sessionFactory.openSession();
-        String query = "from " + Index.class.getSimpleName() + " where lemma_id = " + lemma.getId();
-        List<Index> indexes = session.createQuery(query, Index.class).getResultList();
+        Query<Index> query = session.createQuery("from Index where lemma = :lemma", Index.class);
+        query.setParameter("lemma", lemma);
+        List<Index> indexes = query.getResultList();
         session.close();
-
         return indexes.isEmpty() ? Optional.empty() : Optional.of(indexes);
     }
 
     public Optional<List<Index>> getListByPage(Page page) {
         Session session = sessionFactory.openSession();
-        String query = "from " + Index.class.getSimpleName() + " where page_id = " + page.getId();
-        List<Index> indexes = session.createQuery(query, Index.class).getResultList();
+        Query<Index> query = session.createQuery("from Index where page = :page", Index.class);
+        query.setParameter("page", page);
+        List<Index> indexes = query.getResultList();
         session.close();
-
         return indexes.isEmpty() ? Optional.empty() : Optional.of(indexes);
+    }
+
+    public Optional<Index> getListByPageAndLemma(Page page, Lemma lemma) {
+        Session session = sessionFactory.openSession();
+        Query<Index> query = session.createQuery("from Index where page = :page and lemma = :lemma", Index.class);
+        query.setParameter("page", page)
+                .setParameter("lemma", lemma);
+        Index index = query.getSingleResult();
+
+        return index == null ? Optional.empty() : Optional.of(index);
     }
 
     @Override
@@ -67,7 +76,6 @@ public class IndexDao implements Dao<Index> {
     public void save(Index index) {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
-
         session.persist(index);
         transaction.commit();
         session.close();
@@ -94,7 +102,6 @@ public class IndexDao implements Dao<Index> {
     public void update(Index index) {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
-
         session.merge(index);
         transaction.commit();
         session.close();

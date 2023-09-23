@@ -21,6 +21,7 @@ import searchengine.model.Status;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -113,20 +114,30 @@ public class IndexingServiceImpl implements IndexingService {
     }
 
     @Override
-    public int search(String query, String site, int offset, int limit) {
+    public String search(String query, String site, int offset, int limit) {
         searchengine.model.Site s = new searchengine.model.Site();
         s.setUrl(site);
         s = siteDao.get(s).orElse(null);
 
         if (s == null) {
-            return 0;
+            return """
+                    {
+                    \t"result": false,
+                    \t"error": "Сайт не проиндексирован"
+                    }
+                    """;
         }
 
         HashMap<String, Integer> lemmasMap = lemmaFinder.getLemmas(query);
         List<Lemma> lemmasList = lemmaDao.getAll().orElse(null);
 
         if (lemmasList == null || lemmasList.isEmpty()) {
-            return -1;
+            return """
+                    {
+                    \t"result": false,
+                    \t"error": "Страницы не найдены"
+                    }
+                    """;
         }
 
         searchengine.model.Site tempS = s;
@@ -145,29 +156,28 @@ public class IndexingServiceImpl implements IndexingService {
 
             if (i == 0) {
                 indexList = indexDao.getListByLemma(lemmasList.get(i)).orElse(null);
-
                 if (indexList == null || indexList.isEmpty()) {
-                    return -1;
+                    return """
+                    {
+                    \t"result": false,
+                    \t"error": "Страницы не найдены"
+                    }
+                    """;
                 }
-            } else {
-                List<Index> temp = indexDao.getListByLemma(lemmasList.get(i)).orElse(null);
-                indexList.removeIf(index -> temp.stream().noneMatch(e -> e.getPage().equals(index.getPage())));
-            }
-        }
 
-        for (Index index : indexList) {
-            pageDao.get(index.getPage().getId()).ifPresent(pagesList::add);
+                pagesList = pageDao.getListByIndexes(indexList).orElse(null);
+            } else {
+                List<Index> temp = indexDao.getListByLemma(lemmasList.get(i)).orElse(new ArrayList<>());
+                pagesList.removeIf(page -> temp.stream().noneMatch(e -> e.getPage().getId() == page.getId()));
+            }
         }
 
         HashMap<Page, Double> foundPages = new HashMap<>();
         double maxRelevance = 0.0;
         for (Page page : pagesList) {
             for (Lemma lemma : lemmasList) {
-                Index index = indexList
-                        .stream()
-                        .filter(i -> i.getLemma() == lemma && i.getPage() == page)
-                        .findFirst()
-                        .orElse(null);
+                Index index = indexDao.getListByPageAndLemma(page, lemma).orElse(null);
+
                 double rank = index.getRank();
 
                 if (!foundPages.containsKey(page)) {
@@ -187,9 +197,19 @@ public class IndexingServiceImpl implements IndexingService {
         List<Map.Entry<Page, Double>> sortedByRelevance = new ArrayList<>(foundPages.entrySet());
         sortedByRelevance.sort(Map.Entry.comparingByValue());
 
-        String result = searchSuccessMessage(sortedByRelevance, limit, s);
+        String result;
+        if (sortedByRelevance.isEmpty() || sortedByRelevance == null) {
+            return """
+                    {
+                    \t"result": false,
+                    \t"error": "Страницы не найдены"
+                    }
+                    """;
+        }
 
-        return 1;
+        result = searchSuccessMessage(sortedByRelevance, limit, s);
+
+        return result;
     }
 
     private void createSiteParserHandlers() {
@@ -202,25 +222,27 @@ public class IndexingServiceImpl implements IndexingService {
         StringBuilder result = new StringBuilder();
         result.append(String.format("""
                 {
-                    'result': true,
-                    'count': %d,
-                    'data': [
-                        {
+                    "result": true,
+                    "count": %d,
+                    "data": [
                 """, sortedPages.size()));
         for (int i = sortedPages.size() - 1; i >= sortedPages.size() - limit; i--) {
             String title = getPageTitle(sortedPages.get(i).getKey());
             String pageResult = String.format("""
-                                "site": %s,
-                                "siteName": %s,
-                                "uri": %s,
-                                "title": %s,
-                                "snippet": %s,
-                                "relevance": %f.3
-                    """, site.getUrl(), site.getName(), sortedPages.get(i).getKey().getPath(), title);
+                            {
+                                "site": "%s",
+                                "siteName": "%s",
+                                "uri": "%s",
+                                "title": "%s",
+                                "snippet": "%s",
+                                "relevance": %.3f
+                            },
+                    """, site.getUrl(), site.getName(), sortedPages.get(i).getKey().getPath(),
+                    title, "", sortedPages.get(i).getValue());
             result.append(pageResult);
         }
         result.append("""
-                    }
+                    ]
                 }
                 """);
 
