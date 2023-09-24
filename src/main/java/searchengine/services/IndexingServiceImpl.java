@@ -13,6 +13,8 @@ import searchengine.dao.SiteDao;
 import searchengine.dto.indexing.LemmaFinder;
 import searchengine.dto.indexing.PageIndexer;
 import searchengine.dto.indexing.SiteParserHandler;
+import searchengine.dto.indexing.search.SearchItem;
+import searchengine.dto.indexing.search.SearchResponse;
 import searchengine.model.Index;
 import searchengine.model.Lemma;
 import searchengine.model.Page;
@@ -21,7 +23,6 @@ import searchengine.model.Status;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -55,8 +56,6 @@ public class IndexingServiceImpl implements IndexingService {
         for (Thread thread : threads) {
             thread.start();
         }
-
-//        isStarted = false;
 
         return 0;
     }
@@ -114,30 +113,30 @@ public class IndexingServiceImpl implements IndexingService {
     }
 
     @Override
-    public String search(String query, String site, int offset, int limit) {
+    public SearchResponse search(String query, String site, int offset, int limit) {
+        String[] errors = new String[]{"Сайт не проиндексирован", "Страницы не найдены"};
+        SearchResponse response = new SearchResponse();
         searchengine.model.Site s = new searchengine.model.Site();
         s.setUrl(site);
         s = siteDao.get(s).orElse(null);
 
+        // Сайт не проиндексирован
         if (s == null) {
-            return """
-                    {
-                    \t"result": false,
-                    \t"error": "Сайт не проиндексирован"
-                    }
-                    """;
+            response.setResult(false);
+            //response.setError(errors[0]);
+            return response;
         }
 
         HashMap<String, Integer> lemmasMap = lemmaFinder.getLemmas(query);
-        List<Lemma> lemmasList = lemmaDao.getAll().orElse(null);
+        List<String> words = new ArrayList<>();
+        lemmasMap.forEach((k, v) -> words.add(k));
+        List<Lemma> lemmasList = lemmaDao.getListByLemma(words.toArray()).orElse(null);
 
+        // Нет страниц с такими леммами
         if (lemmasList == null || lemmasList.isEmpty()) {
-            return """
-                    {
-                    \t"result": false,
-                    \t"error": "Страницы не найдены"
-                    }
-                    """;
+            response.setResult(false);
+            //response.setError(errors[1]);
+            return response;
         }
 
         searchengine.model.Site tempS = s;
@@ -156,13 +155,11 @@ public class IndexingServiceImpl implements IndexingService {
 
             if (i == 0) {
                 indexList = indexDao.getListByLemma(lemmasList.get(i)).orElse(null);
+                // Не найдено индексов с искомыми леммами
                 if (indexList == null || indexList.isEmpty()) {
-                    return """
-                    {
-                    \t"result": false,
-                    \t"error": "Страницы не найдены"
-                    }
-                    """;
+                    response.setResult(false);
+                    //response.setError(errors[1]);
+                    return response;
                 }
 
                 pagesList = pageDao.getListByIndexes(indexList).orElse(null);
@@ -172,44 +169,41 @@ public class IndexingServiceImpl implements IndexingService {
             }
         }
 
-        HashMap<Page, Double> foundPages = new HashMap<>();
-        double maxRelevance = 0.0;
+        if (pagesList == null || pagesList.isEmpty()) {
+            response.setResult(false);
+            //response.setError(errors[1]);
+            return response;
+        }
+
+        HashMap<Page, Float> foundPages = new HashMap<>();
+        float maxRelevance = 0.0f;
         for (Page page : pagesList) {
             for (Lemma lemma : lemmasList) {
                 Index index = indexDao.getListByPageAndLemma(page, lemma).orElse(null);
-
-                double rank = index.getRank();
+                float rank = index.getRank();
 
                 if (!foundPages.containsKey(page)) {
                     foundPages.put(page, rank);
                 } else {
-                    double relevance = foundPages.get(page) + rank;
+                    float relevance = foundPages.get(page) + rank;
                     maxRelevance = Math.max(maxRelevance, relevance);
                     foundPages.put(page, relevance);
                 }
             }
         }
 
-        for (Map.Entry<Page, Double> entry : foundPages.entrySet()) {
+        for (Map.Entry<Page, Float> entry : foundPages.entrySet()) {
             foundPages.put(entry.getKey(), entry.getValue() / maxRelevance);
         }
 
-        List<Map.Entry<Page, Double>> sortedByRelevance = new ArrayList<>(foundPages.entrySet());
+        List<Map.Entry<Page, Float>> sortedByRelevance = new ArrayList<>(foundPages.entrySet());
         sortedByRelevance.sort(Map.Entry.comparingByValue());
 
-        String result;
-        if (sortedByRelevance.isEmpty() || sortedByRelevance == null) {
-            return """
-                    {
-                    \t"result": false,
-                    \t"error": "Страницы не найдены"
-                    }
-                    """;
-        }
+        response.setResult(true);
+        response.setCount(sortedByRelevance.size());
+        response.setData(getSearchData(sortedByRelevance, limit, s));
 
-        result = searchSuccessMessage(sortedByRelevance, limit, s);
-
-        return result;
+        return response;
     }
 
     private void createSiteParserHandlers() {
@@ -218,35 +212,21 @@ public class IndexingServiceImpl implements IndexingService {
         }
     }
 
-    private String searchSuccessMessage(List<Map.Entry<Page, Double>> sortedPages, int limit, searchengine.model.Site site) {
-        StringBuilder result = new StringBuilder();
-        result.append(String.format("""
-                {
-                    "result": true,
-                    "count": %d,
-                    "data": [
-                """, sortedPages.size()));
-        for (int i = sortedPages.size() - 1; i >= sortedPages.size() - limit; i--) {
-            String title = getPageTitle(sortedPages.get(i).getKey());
-            String pageResult = String.format("""
-                            {
-                                "site": "%s",
-                                "siteName": "%s",
-                                "uri": "%s",
-                                "title": "%s",
-                                "snippet": "%s",
-                                "relevance": %.3f
-                            },
-                    """, site.getUrl(), site.getName(), sortedPages.get(i).getKey().getPath(),
-                    title, "", sortedPages.get(i).getValue());
-            result.append(pageResult);
-        }
-        result.append("""
-                    ]
-                }
-                """);
+    private List<SearchItem> getSearchData(List<Map.Entry<Page, Float>> sortedPages, int limit, searchengine.model.Site site) {
+        List<SearchItem> items = new ArrayList<>();
 
-        return result.toString();
+        for (int i = sortedPages.size() - 1; i >= sortedPages.size() - limit; i--) {
+            SearchItem item = new SearchItem();
+            item.setSite(site.getUrl());
+            item.setSiteName(site.getName());
+            item.setUri(sortedPages.get(i).getKey().getPath());
+            item.setTitle(getPageTitle(sortedPages.get(i).getKey()));
+            item.setSnippet("");
+            item.setRelevance(sortedPages.get(i).getValue());
+            items.add(item);
+        }
+
+        return items;
     }
 
     private String getPageTitle(Page page) {

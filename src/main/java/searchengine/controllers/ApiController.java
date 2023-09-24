@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.lang.Nullable;
 import org.springframework.web.bind.annotation.*;
 import searchengine.config.Site;
+import searchengine.dto.indexing.search.SearchResponse;
 import searchengine.dto.statistics.StatisticsResponse;
 import searchengine.services.IndexingService;
 import searchengine.services.StatisticsService;
@@ -56,11 +57,9 @@ public class ApiController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<String> search(String query, int offset, int limit, String site) {
-        String responseText;
+    public ResponseEntity<SearchResponse> search(String query, int offset, int limit, String site) {
+        SearchResponse response = indexingService.search(query, site, offset, limit);
 
-        String searchResponse = indexingService.search(query, site, offset, limit);
-
-        return ResponseEntity.ok(searchResponse);
+        return ResponseEntity.ok(response);
     }
 }

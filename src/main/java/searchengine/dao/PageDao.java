@@ -65,7 +65,7 @@ public class PageDao implements Dao<Page> {
         indexes.forEach(index -> i.add(index.getPage().getId()));
         Object[] ids = i.toArray();
 
-        Query<Page> query = session.createQuery("from Page where id in :ids");
+        Query<Page> query = session.createQuery("from Page where id in :ids", Page.class);
         query.setParameterList("ids", ids);
         List<Page> pages = query.getResultList();
 

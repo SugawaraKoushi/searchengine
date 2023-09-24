@@ -13,17 +13,14 @@ import searchengine.dto.statistics.StatisticsResponse;
 import searchengine.dto.statistics.TotalStatistics;
 import searchengine.model.Lemma;
 import searchengine.model.Page;
-import searchengine.model.Status;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
 public class StatisticsServiceImpl implements StatisticsService {
-    private final Random random = new Random();
     private final SitesList sites;
 
     private final PageDao pageDao = new PageDao();

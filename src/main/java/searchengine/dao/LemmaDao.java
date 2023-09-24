@@ -3,6 +3,7 @@ package searchengine.dao;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
+import org.hibernate.query.Query;
 import org.springframework.beans.factory.annotation.Autowired;
 import searchengine.model.Lemma;
 import searchengine.util.HibernateUtil;
@@ -56,6 +57,14 @@ public class LemmaDao implements Dao<Lemma>{
         return Optional.of(lemmas);
     }
 
+    public Optional<List<Lemma>> getListByLemma(Object[] lemmas) {
+        Session session = sessionFactory.openSession();
+        Query<Lemma> query = session.createQuery("from Lemma where lemma in :lemmas", Lemma.class);
+        query.setParameterList("lemmas", lemmas);
+        List<Lemma> lemmaList = query.getResultList();
+        return lemmaList.isEmpty() ? Optional.empty() : Optional.of(lemmaList);
+    }
+
     @Override
     public void save(Lemma lemma) {
         Session session = sessionFactory.openSession();
@@ -80,6 +89,7 @@ public class LemmaDao implements Dao<Lemma>{
             i++;
         }
 
+        transaction.commit();
         session.close();
     }
 
@@ -106,7 +116,7 @@ public class LemmaDao implements Dao<Lemma>{
             session.merge(lemma);
             i++;
         }
-
+        transaction.commit();
         session.close();
     }
 
