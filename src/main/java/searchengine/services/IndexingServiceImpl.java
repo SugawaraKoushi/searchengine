@@ -23,6 +23,7 @@ import searchengine.model.Status;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -148,8 +149,7 @@ public class IndexingServiceImpl implements IndexingService {
         lemmasList.sort(Lemma::compareTo);
 
         List<Page> pagesList = new ArrayList<>();
-        List<Index> indexList = new ArrayList<>();
-        List<Lemma> finalLemmasList = lemmasList;
+        List<Index> indexList;
 
         for (int i = 0; i < lemmasList.size(); i++) {
 
@@ -201,7 +201,7 @@ public class IndexingServiceImpl implements IndexingService {
 
         response.setResult(true);
         response.setCount(sortedByRelevance.size());
-        response.setData(getSearchData(sortedByRelevance, limit, s));
+        response.setData(getSearchData(sortedByRelevance, limit, s, query));
 
         return response;
     }
@@ -212,8 +212,9 @@ public class IndexingServiceImpl implements IndexingService {
         }
     }
 
-    private List<SearchItem> getSearchData(List<Map.Entry<Page, Float>> sortedPages, int limit, searchengine.model.Site site) {
+    private List<SearchItem> getSearchData(List<Map.Entry<Page, Float>> sortedPages, int limit, searchengine.model.Site site, String query) {
         List<SearchItem> items = new ArrayList<>();
+        limit = Math.min(limit, sortedPages.size());
 
         for (int i = sortedPages.size() - 1; i >= sortedPages.size() - limit; i--) {
             SearchItem item = new SearchItem();
@@ -221,7 +222,7 @@ public class IndexingServiceImpl implements IndexingService {
             item.setSiteName(site.getName());
             item.setUri(sortedPages.get(i).getKey().getPath());
             item.setTitle(getPageTitle(sortedPages.get(i).getKey()));
-            item.setSnippet("");
+            item.setSnippet(getSnippet(sortedPages.get(i).getKey(), query));
             item.setRelevance(sortedPages.get(i).getValue());
             items.add(item);
         }
@@ -233,5 +234,36 @@ public class IndexingServiceImpl implements IndexingService {
         String content = page.getContent();
         Document document = Jsoup.parse(content);
         return document.title();
+    }
+
+    private String getSnippet(Page page, String query) {
+        String text = Jsoup.parse(page.getContent()).text();
+        String[] words = query.split("\\s");
+        Arrays.sort(words, Comparator.comparingInt(String::length).reversed());
+        List<String> sentences = new ArrayList<>();
+
+        for (String word : words) {
+            Pattern pattern = Pattern.compile("\\b.{0,100}\\s(" + word + ")\\s.{0,100}\\b");
+            Matcher matcher;
+            boolean isFoundInSentences = false;
+
+            for (int i = 0; i < sentences.size(); i++) {
+                matcher = pattern.matcher(sentences.get(i));
+                if (matcher.find()) {
+                    sentences.set(i, matcher.group().replaceAll("\\s" + word + "\\s", " <b>" + word + "</b> "));
+                    isFoundInSentences = true;
+                }
+            }
+
+            if (!isFoundInSentences) {
+                matcher = pattern.matcher(text);
+                if (matcher.find()) {
+                    String t = matcher.group().replaceAll("\\s" + word + "\\s", " <b>" + word + "</b> ");
+                    sentences.add(t);
+                }
+            }
+        }
+
+        return "... " + String.join(".\n", sentences) + " ...";
     }
 }

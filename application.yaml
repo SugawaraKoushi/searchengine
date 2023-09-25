@@ -18,7 +18,7 @@ indexing-settings:
   sites:
     - url: https://www.playback.ru
       name: PlayBack.Ru
-#    - url: https://dimonvideo.ru
-#      name: dimonvideo.ru
-#    - url: https://et-cetera.ru/mobile
-#      name: et-cetera.ru
+    - url: https://dimonvideo.ru
+      name: dimonvideo.ru
+    - url: https://et-cetera.ru/mobile
+      name: et-cetera.ru
