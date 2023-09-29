@@ -46,7 +46,7 @@ public class Lemma implements Serializable, Comparable<Lemma>{
 
         if (obj instanceof Lemma l) {
             if (!l.lemma.isBlank()) {
-                return l.lemma.equals(this.lemma);
+                return l.lemma.equals(this.lemma) && l.site.getId() == this.site.getId();
             }
         }
 

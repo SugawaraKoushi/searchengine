@@ -60,9 +60,12 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
 
         for (SiteParser task : tasks) {
             result.add(task.page);
+
             HashSet<Page> taskResult = task.join();
-            if (taskResult != null)
+            if (taskResult != null) {
                 result.addAll(taskResult);
+            }
+
         }
 
         return result;

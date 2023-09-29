@@ -16,9 +16,9 @@ spring:
 
 indexing-settings:
   sites:
-    - url: https://www.playback.ru
-      name: PlayBack.Ru
-    - url: https://dimonvideo.ru
-      name: dimonvideo.ru
-    - url: https://et-cetera.ru/mobile
+    #- url: https://www.playback.ru
+    # name: PlayBack.Ru
+    #- url: https://dimonvideo.ru
+    #  name: dimonvideo.ru
+    - url: https://et-cetera.ru
       name: et-cetera.ru

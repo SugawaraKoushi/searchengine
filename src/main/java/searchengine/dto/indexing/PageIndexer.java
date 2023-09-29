@@ -1,5 +1,6 @@
 package searchengine.dto.indexing;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
@@ -8,16 +9,25 @@ import searchengine.dao.*;
 import searchengine.model.*;
 
 import java.util.*;
+import java.util.concurrent.Callable;
 
 @RequiredArgsConstructor
-public class PageIndexer {
+public class PageIndexer implements Callable<Integer> {
     private final LemmaDao lemmaDao = new LemmaDao();
     private final IndexDao indexDao = new IndexDao();
     private final Dao<Page> pageDao = new PageDao();
     private final Dao<Site> siteDao = new SiteDao();
-
+    @Getter
+    private static List<Lemma> lemmas = new ArrayList<>();
+    @Getter
+    private static List<Index> indexes = new ArrayList<>();
     private Site site;
     private Page page;
+
+    static {
+        lemmas = Collections.synchronizedList(lemmas);
+        indexes = Collections.synchronizedList(indexes);
+    }
 
     private static final LemmaFinder lemmaFinder = LemmaFinder.getInstance();
 
@@ -32,7 +42,7 @@ public class PageIndexer {
             saveSite();
         } else {
             site = s;
-            if(page.getSite() == null) {
+            if (page.getSite() == null) {
                 page.setSite(site);
             }
         }
@@ -59,35 +69,46 @@ public class PageIndexer {
         String text = getTextFromPage(page.getContent());
         HashMap<String, Integer> lemmasMap = lemmaFinder.getLemmas(text);
 
+        List<Lemma> lemmas = new ArrayList<>();
         for (Map.Entry<String, Integer> entry : lemmasMap.entrySet()) {
             List<Lemma> lemmasToSave = new ArrayList<>();
             List<Lemma> lemmasToUpdate = new ArrayList<>();
-            List<Lemma> lemmas = new ArrayList<>();
+
             List<Index> indexes = new ArrayList<>();
 
             Lemma l = getLemma(entry.getKey());
             if (l == null) {
-                //l = saveLemma(entry.getKey(), entry.getValue());
                 l = createLemma(entry.getKey(), entry.getValue());
                 lemmasToSave.add(l);
             } else {
                 l.setFrequency(l.getFrequency() + entry.getValue());
                 lemmasToUpdate.add(l);
-                //lemmaDao.update(l);
             }
 
-            lemmaDao.saveBatch(lemmasToSave);
-            lemmaDao.updateBatch(lemmasToUpdate);
             lemmas.addAll(lemmasToSave);
             lemmas.addAll(lemmasToUpdate);
+        }
 
+        synchronized (PageIndexer.lemmas) {
             for (Lemma lemma : lemmas) {
-                indexes.add(createIndex(lemma));
+                Lemma buf = lemma;
+                if (PageIndexer.lemmas.contains(lemma)) {
+                    for (int i = 0; i < PageIndexer.lemmas.size(); i++) {
+                        if (PageIndexer.lemmas.get(i).equals(lemma)) {
+                            buf = PageIndexer.lemmas.get(i);
+                            buf.setFrequency(buf.getFrequency() + lemma.getFrequency());
+                            PageIndexer.lemmas.set(i, buf);
+                            break;
+                        }
+                    }
+                } else {
+                    PageIndexer.lemmas.add(lemma);
+                }
+
+                synchronized (PageIndexer.indexes) {
+                    PageIndexer.indexes.add(createIndex(buf, lemma.getFrequency()));
+                }
             }
-
-            indexDao.saveBatch(indexes);
-
-            //saveIndex(l);
         }
     }
 
@@ -192,11 +213,11 @@ public class PageIndexer {
         siteDao.update(site);
     }
 
-    private Index createIndex(Lemma lemma) {
+    private Index createIndex(Lemma lemma, int frequency) {
         Index index = new Index();
         index.setPage(page);
         index.setLemma(lemma);
-        index.setRank(lemma.getFrequency());
+        index.setRank(frequency);
         return index;
     }
 
@@ -217,8 +238,6 @@ public class PageIndexer {
             }
 
             int frequency = lemma.getFrequency() - Math.round(index.getRank());
-
-            //indexDao.delete(index);
 
             if (frequency <= 0) {
                 lemmaDao.delete(lemma);
@@ -244,5 +263,16 @@ public class PageIndexer {
 
     private void deletePage() {
         pageDao.delete(page);
+    }
+
+    @Override
+    public Integer call() {
+        try {
+            index();
+            return 1;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+        }
     }
 }

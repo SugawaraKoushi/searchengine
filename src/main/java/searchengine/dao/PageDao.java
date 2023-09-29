@@ -7,12 +7,10 @@ import org.hibernate.query.Query;
 import org.springframework.beans.factory.annotation.Autowired;
 import searchengine.model.Index;
 import searchengine.model.Page;
+import searchengine.model.Site;
 import searchengine.util.HibernateUtil;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 public class PageDao implements Dao<Page> {
     @Autowired
@@ -59,6 +57,17 @@ public class PageDao implements Dao<Page> {
         return Optional.of(pages);
     }
 
+    public Optional<List<Page>> getAllBySite(Site site) {
+        Session session = sessionFactory.openSession();
+
+
+        Query<Page> query = session.createQuery("from Page where site = :site", Page.class);
+        query.setParameter("site", site);
+        List<Page> pages = query.getResultList();
+
+        return pages.isEmpty() ? Optional.empty() : Optional.of(pages);
+    }
+
     public Optional<List<Page>> getListByIndexes(Collection<Index> indexes) {
         Session session = sessionFactory.openSession();
         List<Integer> i = new ArrayList<>();
@@ -76,9 +85,14 @@ public class PageDao implements Dao<Page> {
     public void save(Page page) {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
-        session.persist(page);
-        transaction.commit();
-        session.close();
+        try {
+            session.persist(page);
+            transaction.commit();
+        } catch (Exception e) {
+            System.out.println("Обнаружен дубликат.");
+        } finally {
+            session.close();
+        }
     }
 
     @Override

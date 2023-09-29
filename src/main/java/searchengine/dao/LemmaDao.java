@@ -1,11 +1,13 @@
 package searchengine.dao;
 
+import org.hibernate.LockMode;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.hibernate.query.Query;
 import org.springframework.beans.factory.annotation.Autowired;
 import searchengine.model.Lemma;
+import searchengine.model.Site;
 import searchengine.util.HibernateUtil;
 
 import java.util.*;
@@ -57,6 +59,14 @@ public class LemmaDao implements Dao<Lemma>{
         return Optional.of(lemmas);
     }
 
+    public Optional<List<Lemma>> getAllBySite(Site site) {
+        Session session = sessionFactory.openSession();
+        Query<Lemma> query = session.createQuery("from Lemma where site = :site", Lemma.class);
+        query.setParameter("site", site);
+        List<Lemma> lemmas = query.getResultList();
+        return lemmas.isEmpty() ? Optional.empty() : Optional.of(lemmas);
+    }
+
     public Optional<List<Lemma>> getListByLemma(Object[] lemmas) {
         Session session = sessionFactory.openSession();
         Query<Lemma> query = session.createQuery("from Lemma where lemma in :lemmas", Lemma.class);
@@ -78,6 +88,7 @@ public class LemmaDao implements Dao<Lemma>{
     public void saveBatch(Collection<Lemma> lemmas) {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
+
         int i = 0;
 
         for (Lemma lemma : lemmas) {
@@ -120,6 +131,30 @@ public class LemmaDao implements Dao<Lemma>{
         session.close();
     }
 
+    public void saveOrUpdate(List<Lemma> lemmas) {
+        Session session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+        int i = 0;
+
+        for (Lemma lemma : lemmas) {
+            if (i > 0 && i % BATCH_SIZE == 0){
+                session.flush();
+                session.clear();
+            }
+
+            if (isExists(lemma, session)) {
+                session.merge(lemma);
+            } else {
+                session.persist(lemma);
+            }
+
+            i++;
+        }
+
+        transaction.commit();
+        session.close();
+    }
+
     @Override
     public void delete(Lemma lemma) {
         Session session = sessionFactory.openSession();
@@ -128,5 +163,9 @@ public class LemmaDao implements Dao<Lemma>{
         session.remove(lemma);
         transaction.commit();
         session.close();
+    }
+
+    private boolean isExists(Lemma lemma, Session session) {
+        return session.get(Lemma.class, lemma.getId()) != null;
     }
 }

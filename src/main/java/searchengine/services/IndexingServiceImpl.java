@@ -23,13 +23,12 @@ import searchengine.model.Status;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class IndexingServiceImpl implements IndexingService {
     private static final Pattern URL_PATTERN = Pattern.compile("(?<root>https?://[^/]+)?(?<path>.+)");
-    private boolean isStarted = false;
+    private static boolean isStarted = false;
     private final SitesList sites;
     private List<SiteParserHandler> handlers;
     private List<Thread> threads;
@@ -39,6 +38,10 @@ public class IndexingServiceImpl implements IndexingService {
     private final IndexDao indexDao = new IndexDao();
     private final LemmaFinder lemmaFinder = LemmaFinder.getInstance();
 
+    /**
+     * Запускает полную индесацию всех сайтов.
+     * @return Успешность запуска.
+     */
     @Override
     public int startIndexing() {
         handlers = new ArrayList<>();
@@ -61,6 +64,10 @@ public class IndexingServiceImpl implements IndexingService {
         return 0;
     }
 
+    /**
+     * Останавливает индексацю всех сайтов.
+     * @return Успешность остановки.
+     */
     @Override
     public int stopIndexing() {
         if (!isStarted)
@@ -78,6 +85,11 @@ public class IndexingServiceImpl implements IndexingService {
         return 0;
     }
 
+    /**
+     * Запускает индексацю отдельной страницы.
+     * @param url URL страницы.
+     * @return Успешность индексации страницы.
+     */
     @Override
     public int indexPage(String url) {
         Matcher matcher = URL_PATTERN.matcher(url);
@@ -113,6 +125,14 @@ public class IndexingServiceImpl implements IndexingService {
         return -1;
     }
 
+    /**
+     * Поиск строки по индексированным страницам.
+     * @param query искомая строка;
+     * @param site сайт, по которому осуществляется поиск (если null - по всем сайтам);
+     * @param offset сдвиг от начала списка результатов (по умолчанию 0);
+     * @param limit (количество найденных страниц, которые нужно отобразить).
+     * @return страницы сайтов с найденной искомой строкой.
+     */
     @Override
     public SearchResponse search(String query, String site, int offset, int limit) {
         String[] errors = new String[]{"Сайт не проиндексирован", "Страницы не найдены"};
@@ -206,6 +226,10 @@ public class IndexingServiceImpl implements IndexingService {
         return response;
     }
 
+    public static void setIsStarted(boolean value) {
+        isStarted = value;
+    }
+
     private void createSiteParserHandlers() {
         for (searchengine.config.Site site : sites.getSites()) {
             handlers.add(new SiteParserHandler(site));
@@ -239,11 +263,16 @@ public class IndexingServiceImpl implements IndexingService {
     private String getSnippet(Page page, String query) {
         String text = Jsoup.parse(page.getContent()).text();
         String[] words = query.split("\\s");
-        Arrays.sort(words, Comparator.comparingInt(String::length).reversed());
+
+        List<String> wordsVariations = new ArrayList<>();
+        for (String word : words) {
+            wordsVariations.addAll(getWordVariations(word));
+        }
+        wordsVariations.sort(Comparator.comparingInt(String::length).reversed());
         List<String> sentences = new ArrayList<>();
 
-        for (String word : words) {
-            Pattern pattern = Pattern.compile("\\b.{0,100}\\s(" + word + ")\\s.{0,100}\\b");
+        for (String word : wordsVariations) {
+            Pattern pattern = Pattern.compile("\\b.{0,30}\\s(" + word + ")\\s.{0,30}\\b");
             Matcher matcher;
             boolean isFoundInSentences = false;
 
@@ -264,6 +293,15 @@ public class IndexingServiceImpl implements IndexingService {
             }
         }
 
-        return "... " + String.join(".\n", sentences) + " ...";
+        return "... " + String.join(". ", sentences) + " ...";
+    }
+
+    private List<String> getWordVariations(String word) {
+        List<String> result = new ArrayList<>();
+        char firstChar = word.toUpperCase().charAt(0);
+        String wordWithFirstCharUpperCase = firstChar + word.substring(1).toLowerCase();
+        result.add(wordWithFirstCharUpperCase);
+        result.add(word.toLowerCase());
+        return result;
     }
 }

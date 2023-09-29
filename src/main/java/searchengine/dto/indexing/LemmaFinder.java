@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 public class LemmaFinder {
-    private static final LemmaFinder INSTANCE = new LemmaFinder();
+    private static volatile LemmaFinder instance;
     private final LuceneMorphology englishMorphology;
     private final LuceneMorphology russianMorphology;
     private static final String[] PARTICLES_NAMES = new String[]{
@@ -39,7 +39,7 @@ public class LemmaFinder {
 
     private synchronized void addLemmaToMap(Map<String, Integer> map, String[] words, LuceneMorphology morphology) {
         for (String word : words) {
-            if (word.isBlank())
+            if (word.isBlank() || word.length() < 3)
                 continue;
 
             List<String> wordBaseForms = morphology.getMorphInfo(word);
@@ -47,7 +47,7 @@ public class LemmaFinder {
                 continue;
 
             List<String> normalForms = morphology.getNormalForms(word);
-            if (normalForms.isEmpty())
+            if (normalForms.isEmpty() || normalForms.get(0).length() < 3)
                 continue;
 
             String normalForm = normalForms.get(0);
@@ -88,7 +88,16 @@ public class LemmaFinder {
         return wordBaseForms.stream().anyMatch(this::hasParticleProperty);
     }
 
-    public static synchronized LemmaFinder getInstance() {
-        return INSTANCE;
+    public static LemmaFinder getInstance() {
+        LemmaFinder localInstance = instance;
+        if (localInstance == null) {
+            synchronized (LemmaFinder.class) {
+                localInstance = instance;
+                if (localInstance == null) {
+                    instance = localInstance = new LemmaFinder();
+                }
+            }
+        }
+        return localInstance;
     }
 }

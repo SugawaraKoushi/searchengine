@@ -1,7 +1,5 @@
 package searchengine.dao;
 
-import org.hibernate.HibernateException;
-
 import java.util.List;
 import java.util.Optional;
 

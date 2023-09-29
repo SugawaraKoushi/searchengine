@@ -81,6 +81,31 @@ public class IndexDao implements Dao<Index> {
         session.close();
     }
 
+    public void saveOrUpdateBatch(Collection<Index> indexes) {
+        Session session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+        int i = 0;
+
+        for (Index index : indexes) {
+            if (i > 0 && i % BATCH_SIZE == 0){
+                session.flush();
+                session.clear();
+            }
+
+            if (isExists(index, session)) {
+                session.merge(index);
+            } else {
+                session.persist(index);
+            }
+
+            i++;
+        }
+
+        transaction.commit();
+        session.close();
+    }
+
+
     public void saveBatch(Collection<Index> indexes) {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
@@ -94,7 +119,7 @@ public class IndexDao implements Dao<Index> {
             session.persist(index);
             i++;
         }
-
+        transaction.commit();
         session.close();
     }
 
@@ -114,5 +139,9 @@ public class IndexDao implements Dao<Index> {
         session.remove(index);
         transaction.commit();
         session.close();
+    }
+
+    private boolean isExists(Index index, Session session) {
+        return session.get(Index.class, index.getId()) != null;
     }
 }

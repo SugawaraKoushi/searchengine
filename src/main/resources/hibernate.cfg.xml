@@ -10,7 +10,7 @@
         <property name="connection.username">root</property>
         <property name="connection.password">1111</property>
         <!-- JDBC connection pool settings ... using built-in test pool -->
-        <property name="connection.pool_size">10</property>
+        <property name="connection.pool_size">100</property>
         <!-- Select our SQL dialect -->
         <property name="dialect">org.hibernate.dialect.MySQL8Dialect</property>
         <!-- Echo the SQL to stdout -->

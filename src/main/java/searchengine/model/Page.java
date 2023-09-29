@@ -54,8 +54,8 @@ public class Page implements Serializable {
         }
 
         if (obj instanceof Page p) {
-            if (p.path != null)
-                return this.path.equals(p.path) || this.id == p.id;
+            if (!p.path.isBlank())
+                return this.path.equals(p.path);
         }
 
         return false;

@@ -30,11 +30,6 @@ public class StatisticsServiceImpl implements StatisticsService {
     @Override
     public StatisticsResponse getStatistics() {
         String notIndexed = "NOT INDEXED";
-        String[] errors = {
-                "Ошибка индексации: главная страница сайта не доступна",
-                "Ошибка индексации: сайт не доступен",
-                ""
-        };
 
         TotalStatistics total = new TotalStatistics();
         total.setSites(sites.getSites().size());
@@ -47,12 +42,12 @@ public class StatisticsServiceImpl implements StatisticsService {
             item.setName(site.getName());
             item.setUrl(site.getUrl());
 
-            int pages = getPagesCount();
-            int lemmas = getLemmasCount();
+            int pages = getPagesCount(site);
+            int lemmas = getLemmasCount(site);
             item.setPages(pages);
             item.setLemmas(lemmas);
 
-            searchengine.model.Site s = getSiteStatus(site);
+            searchengine.model.Site s = getSite(site);
             if (s == null) {
                 item.setStatus(notIndexed);
             } else {
@@ -75,26 +70,25 @@ public class StatisticsServiceImpl implements StatisticsService {
         return response;
     }
 
-    private int getPagesCount() {
-        Optional<List<Page>> optional = pageDao.getAll();
+    private int getPagesCount(Site site) {
+        searchengine.model.Site s = getSite(site);
+        Optional<List<Page>> optional = pageDao.getAllBySite(s);
         List<Page> pages = optional.orElse(new ArrayList<>());
-
         return pages.size();
     }
 
-    private int getLemmasCount() {
-        Optional<List<Lemma>> optional = lemmaDao.getAll();
+    private int getLemmasCount(Site site) {
+        searchengine.model.Site s = getSite(site);
+        Optional<List<Lemma>> optional = lemmaDao.getAllBySite(s);
         List<Lemma> lemmas = optional.orElse(new ArrayList<>());
-
         return lemmas.size();
     }
 
-    private searchengine.model.Site getSiteStatus(Site site) {
+    private searchengine.model.Site getSite(Site site) {
         searchengine.model.Site s = new searchengine.model.Site();
         s.setUrl(site.getUrl());
         Optional<searchengine.model.Site> optional = siteDao.get(s);
         s = optional.orElse(null);
-
         return s;
     }
 }

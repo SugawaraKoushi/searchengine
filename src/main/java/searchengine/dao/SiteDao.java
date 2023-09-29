@@ -5,6 +5,7 @@ import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.springframework.beans.factory.annotation.Autowired;
+import searchengine.model.Page;
 import searchengine.model.Site;
 import searchengine.util.HibernateUtil;
 
@@ -15,6 +16,7 @@ import java.util.Optional;
 public class SiteDao implements Dao<Site> {
     @Autowired
     SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
+
     @Override
     public Optional<Site> get(int id) {
         Session session = sessionFactory.openSession();
@@ -68,6 +70,20 @@ public class SiteDao implements Dao<Site> {
         session.close();
     }
 
+    public void saveOrUpdate(Site site) {
+        Session session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+
+        if (isExists(site)) {
+            session.merge(site);
+        } else {
+            session.persist(site);
+        }
+
+        transaction.commit();
+        session.clear();
+    }
+
     @Override
     public void delete(Site site) {
         Session session = sessionFactory.openSession();
@@ -76,5 +92,9 @@ public class SiteDao implements Dao<Site> {
         session.remove(site);
         transaction.commit();
         session.close();
+    }
+
+    private boolean isExists(Site site) {
+        return get(site).orElse(null) == null;
     }
 }
