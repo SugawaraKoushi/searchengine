@@ -15,8 +15,8 @@ import java.util.concurrent.Callable;
 public class PageIndexer implements Callable<Integer> {
     private final LemmaDao lemmaDao = new LemmaDao();
     private final IndexDao indexDao = new IndexDao();
-    private final Dao<Page> pageDao = new PageDao();
-    private final Dao<Site> siteDao = new SiteDao();
+    private final PageDao pageDao = new PageDao();
+    private final SiteDao siteDao = new SiteDao();
     @Getter
     private static List<Lemma> lemmas = new ArrayList<>();
     @Getter
@@ -57,13 +57,13 @@ public class PageIndexer implements Callable<Integer> {
             }
 
             parsePage();
-            page = savePage();
+            pageDao.saveOrUpdate(page);
 
             if (page.getCode() >= 400) {
                 return;
             }
         } else {
-            page = savePage();
+            pageDao.saveOrUpdate(page);
         }
 
         String text = getTextFromPage(page.getContent());
@@ -169,40 +169,12 @@ public class PageIndexer implements Callable<Integer> {
         siteDao.save(site);
     }
 
-    private Page savePage() {
-        Page p = new Page();
-        p.setSite(site);
-        p.setPath(page.getPath());
-        p.setCode(page.getCode());
-        p.setContent(page.getContent());
-
-        pageDao.save(p);
-        return p;
-    }
-
     private Lemma createLemma(String lemma, int frequency) {
         Lemma l = new Lemma();
         l.setSite(site);
         l.setFrequency(frequency);
         l.setLemma(lemma);
         return l;
-    }
-
-    private Lemma saveLemma(String lemma, int frequency) {
-        Lemma l = new Lemma();
-        l.setSite(site);
-        l.setFrequency(frequency);
-        l.setLemma(lemma);
-        lemmaDao.save(l);
-        return l;
-    }
-
-    private void saveIndex(Lemma lemma) {
-        Index i = new Index();
-        i.setPage(page);
-        i.setLemma(lemma);
-        i.setRank(lemma.getFrequency());
-        indexDao.save(i);
     }
 
     private void updateSite(String error, Status status) {

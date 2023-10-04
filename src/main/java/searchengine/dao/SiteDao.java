@@ -1,6 +1,8 @@
 package searchengine.dao;
 
 import jakarta.persistence.NoResultException;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
@@ -95,6 +97,6 @@ public class SiteDao implements Dao<Site> {
     }
 
     private boolean isExists(Site site) {
-        return get(site).orElse(null) == null;
+        return get(site).orElse(null) != null;
     }
 }

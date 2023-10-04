@@ -1,11 +1,10 @@
 package searchengine.controllers;
 
-import org.springframework.data.repository.config.RepositoryConfigurationSource;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.Nullable;
 import org.springframework.web.bind.annotation.*;
-import searchengine.config.Site;
-import searchengine.dto.indexing.search.SearchResponse;
+import searchengine.dto.indexing.Response.Response;
+import searchengine.dto.indexing.Response.SearchFailureResponse;
+import searchengine.dto.indexing.Response.SearchSuccessResponse;
 import searchengine.dto.statistics.StatisticsResponse;
 import searchengine.services.IndexingService;
 import searchengine.services.StatisticsService;
@@ -57,9 +56,13 @@ public class ApiController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<SearchResponse> search(String query, int offset, int limit, String site) {
-        SearchResponse response = indexingService.search(query, site, offset, limit);
+    public ResponseEntity<Response> search(String query, int offset, int limit, String site) {
+        Response response = indexingService.search(query, site, offset, limit);
+        int code = 200;
+        if (response instanceof SearchFailureResponse) {
+            code = 404;
+        }
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.status(code).body(response);
     }
 }

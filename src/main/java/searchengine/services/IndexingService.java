@@ -1,8 +1,8 @@
 package searchengine.services;
 
 import org.springframework.lang.Nullable;
-import searchengine.config.Site;
-import searchengine.dto.indexing.search.SearchResponse;
+import searchengine.dto.indexing.Response.Response;
+import searchengine.dto.indexing.Response.SearchSuccessResponse;
 
 public interface IndexingService {
     int startIndexing();
@@ -11,5 +11,5 @@ public interface IndexingService {
 
     int indexPage(String url);
 
-    SearchResponse search(String query, String site, @Nullable int offset, @Nullable int limit);
+    Response search(String query, String site, @Nullable int offset, @Nullable int limit);
 }

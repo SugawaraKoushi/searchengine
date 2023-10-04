@@ -12,9 +12,11 @@ import searchengine.dao.PageDao;
 import searchengine.dao.SiteDao;
 import searchengine.dto.indexing.LemmaFinder;
 import searchengine.dto.indexing.PageIndexer;
+import searchengine.dto.indexing.Response.Response;
+import searchengine.dto.indexing.Response.SearchFailureResponse;
 import searchengine.dto.indexing.SiteParserHandler;
-import searchengine.dto.indexing.search.SearchItem;
-import searchengine.dto.indexing.search.SearchResponse;
+import searchengine.dto.indexing.Response.SearchItem;
+import searchengine.dto.indexing.Response.SearchSuccessResponse;
 import searchengine.model.Index;
 import searchengine.model.Lemma;
 import searchengine.model.Page;
@@ -40,6 +42,7 @@ public class IndexingServiceImpl implements IndexingService {
 
     /**
      * Запускает полную индесацию всех сайтов.
+     *
      * @return Успешность запуска.
      */
     @Override
@@ -66,6 +69,7 @@ public class IndexingServiceImpl implements IndexingService {
 
     /**
      * Останавливает индексацю всех сайтов.
+     *
      * @return Успешность остановки.
      */
     @Override
@@ -87,6 +91,7 @@ public class IndexingServiceImpl implements IndexingService {
 
     /**
      * Запускает индексацю отдельной страницы.
+     *
      * @param url URL страницы.
      * @return Успешность индексации страницы.
      */
@@ -127,24 +132,25 @@ public class IndexingServiceImpl implements IndexingService {
 
     /**
      * Поиск строки по индексированным страницам.
-     * @param query искомая строка;
-     * @param site сайт, по которому осуществляется поиск (если null - по всем сайтам);
+     *
+     * @param query  искомая строка;
+     * @param site   сайт, по которому осуществляется поиск (если null - по всем сайтам);
      * @param offset сдвиг от начала списка результатов (по умолчанию 0);
-     * @param limit (количество найденных страниц, которые нужно отобразить).
+     * @param limit  (количество найденных страниц, которые нужно отобразить).
      * @return страницы сайтов с найденной искомой строкой.
      */
     @Override
-    public SearchResponse search(String query, String site, int offset, int limit) {
+    public Response search(String query, String site, int offset, int limit) {
         String[] errors = new String[]{"Сайт не проиндексирован", "Страницы не найдены"};
-        SearchResponse response = new SearchResponse();
         searchengine.model.Site s = new searchengine.model.Site();
         s.setUrl(site);
         s = siteDao.get(s).orElse(null);
 
         // Сайт не проиндексирован
         if (s == null) {
+            SearchFailureResponse response = new SearchFailureResponse();
             response.setResult(false);
-            //response.setError(errors[0]);
+            response.setError(errors[0]);
             return response;
         }
 
@@ -155,8 +161,9 @@ public class IndexingServiceImpl implements IndexingService {
 
         // Нет страниц с такими леммами
         if (lemmasList == null || lemmasList.isEmpty()) {
+            SearchFailureResponse response = new SearchFailureResponse();
             response.setResult(false);
-            //response.setError(errors[1]);
+            response.setError(errors[1]);
             return response;
         }
 
@@ -177,8 +184,9 @@ public class IndexingServiceImpl implements IndexingService {
                 indexList = indexDao.getListByLemma(lemmasList.get(i)).orElse(null);
                 // Не найдено индексов с искомыми леммами
                 if (indexList == null || indexList.isEmpty()) {
+                    SearchFailureResponse response = new SearchFailureResponse();
                     response.setResult(false);
-                    //response.setError(errors[1]);
+                    response.setError(errors[1]);
                     return response;
                 }
 
@@ -190,8 +198,9 @@ public class IndexingServiceImpl implements IndexingService {
         }
 
         if (pagesList == null || pagesList.isEmpty()) {
+            SearchFailureResponse response = new SearchFailureResponse();
             response.setResult(false);
-            //response.setError(errors[1]);
+            response.setError(errors[1]);
             return response;
         }
 
@@ -219,9 +228,10 @@ public class IndexingServiceImpl implements IndexingService {
         List<Map.Entry<Page, Float>> sortedByRelevance = new ArrayList<>(foundPages.entrySet());
         sortedByRelevance.sort(Map.Entry.comparingByValue());
 
+        SearchSuccessResponse response = new SearchSuccessResponse();
         response.setResult(true);
         response.setCount(sortedByRelevance.size());
-        response.setData(getSearchData(sortedByRelevance, limit, s, query));
+        response.setData(getSearchData(sortedByRelevance, limit, offset, s, query));
 
         return response;
     }
@@ -236,18 +246,19 @@ public class IndexingServiceImpl implements IndexingService {
         }
     }
 
-    private List<SearchItem> getSearchData(List<Map.Entry<Page, Float>> sortedPages, int limit, searchengine.model.Site site, String query) {
+    private List<SearchItem> getSearchData(List<Map.Entry<Page, Float>> pages, int limit, int offset, searchengine.model.Site site, String query) {
         List<SearchItem> items = new ArrayList<>();
-        limit = Math.min(limit, sortedPages.size());
+        int from = pages.size() - offset - 1;
+        int to = Math.max(pages.size() - limit - offset, 0);
 
-        for (int i = sortedPages.size() - 1; i >= sortedPages.size() - limit; i--) {
+        for (int i = from; i >= to; i--) {
             SearchItem item = new SearchItem();
             item.setSite(site.getUrl());
             item.setSiteName(site.getName());
-            item.setUri(sortedPages.get(i).getKey().getPath());
-            item.setTitle(getPageTitle(sortedPages.get(i).getKey()));
-            item.setSnippet(getSnippet(sortedPages.get(i).getKey(), query));
-            item.setRelevance(sortedPages.get(i).getValue());
+            item.setUri(pages.get(i).getKey().getPath());
+            item.setTitle(getPageTitle(pages.get(i).getKey()));
+            item.setSnippet(getSnippet(pages.get(i).getKey(), query));
+            item.setRelevance(pages.get(i).getValue());
             items.add(item);
         }
 
@@ -257,7 +268,7 @@ public class IndexingServiceImpl implements IndexingService {
     private String getPageTitle(Page page) {
         String content = page.getContent();
         Document document = Jsoup.parse(content);
-        return document.title();
+        return document.title().replaceAll("\\\\", "");
     }
 
     private String getSnippet(Page page, String query) {
@@ -272,14 +283,14 @@ public class IndexingServiceImpl implements IndexingService {
         List<String> sentences = new ArrayList<>();
 
         for (String word : wordsVariations) {
-            Pattern pattern = Pattern.compile("\\b.{0,30}\\s(" + word + ")\\s.{0,30}\\b");
+            Pattern pattern = Pattern.compile("\\s.{0,30}[^А-Яа-яA-Za-z]?(" + word + ")[^А-Яа-яA-Za-z]?.{0,30}\\s");
             Matcher matcher;
             boolean isFoundInSentences = false;
 
             for (int i = 0; i < sentences.size(); i++) {
                 matcher = pattern.matcher(sentences.get(i));
                 if (matcher.find()) {
-                    sentences.set(i, matcher.group().replaceAll("\\s" + word + "\\s", " <b>" + word + "</b> "));
+                    sentences.set(i, matcher.group().replaceAll(word, "<b>" + word + "</b>"));
                     isFoundInSentences = true;
                 }
             }
@@ -287,8 +298,8 @@ public class IndexingServiceImpl implements IndexingService {
             if (!isFoundInSentences) {
                 matcher = pattern.matcher(text);
                 if (matcher.find()) {
-                    String t = matcher.group().replaceAll("\\s" + word + "\\s", " <b>" + word + "</b> ");
-                    sentences.add(t);
+                    String t = matcher.group().replaceAll(word, "<b>" + word + "</b>");
+                    sentences.add(t.replaceAll("\\\\", ""));
                 }
             }
         }

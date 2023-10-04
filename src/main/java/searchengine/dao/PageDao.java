@@ -1,5 +1,8 @@
 package searchengine.dao;
 
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
@@ -60,7 +63,6 @@ public class PageDao implements Dao<Page> {
     public Optional<List<Page>> getAllBySite(Site site) {
         Session session = sessionFactory.openSession();
 
-
         Query<Page> query = session.createQuery("from Page where site = :site", Page.class);
         query.setParameter("site", site);
         List<Page> pages = query.getResultList();
@@ -95,6 +97,34 @@ public class PageDao implements Dao<Page> {
         }
     }
 
+    public void saveOrUpdate(Page page) {
+        Session session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+
+        if (isExists(page)) {
+            session.merge(page);
+        } else {
+            session.persist(page);
+        }
+
+        transaction.commit();
+        session.clear();
+    }
+
+    public int getCount(Site site) {
+        Session session = sessionFactory.openSession();
+        CriteriaBuilder criteriaBuilder = session.getCriteriaBuilder();
+
+        CriteriaQuery<Long> criteria = criteriaBuilder.createQuery(Long.class);
+        Root<Page> root = criteria.from(Page.class);
+        criteria.select(criteriaBuilder.count(root))
+                .where(criteriaBuilder.equal(root.get("site"), site));
+
+        Query<Long> query = session.createQuery(criteria);
+        Long count = query.getSingleResult();
+        return Math.toIntExact(count);
+    }
+
     @Override
     public void update(Page page) {
         Session session = sessionFactory.openSession();
@@ -113,5 +143,9 @@ public class PageDao implements Dao<Page> {
         session.remove(page);
         transaction.commit();
         session.close();
+    }
+
+    private boolean isExists(Page page) {
+        return get(page).isPresent();
     }
 }

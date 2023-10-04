@@ -72,16 +72,12 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     private int getPagesCount(Site site) {
         searchengine.model.Site s = getSite(site);
-        Optional<List<Page>> optional = pageDao.getAllBySite(s);
-        List<Page> pages = optional.orElse(new ArrayList<>());
-        return pages.size();
+        return pageDao.getCount(s);
     }
 
     private int getLemmasCount(Site site) {
         searchengine.model.Site s = getSite(site);
-        Optional<List<Lemma>> optional = lemmaDao.getAllBySite(s);
-        List<Lemma> lemmas = optional.orElse(new ArrayList<>());
-        return lemmas.size();
+        return lemmaDao.getCount(s);
     }
 
     private searchengine.model.Site getSite(Site site) {

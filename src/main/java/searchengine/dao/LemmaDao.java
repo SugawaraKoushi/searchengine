@@ -1,5 +1,8 @@
 package searchengine.dao;
 
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
 import org.hibernate.LockMode;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -7,6 +10,7 @@ import org.hibernate.Transaction;
 import org.hibernate.query.Query;
 import org.springframework.beans.factory.annotation.Autowired;
 import searchengine.model.Lemma;
+import searchengine.model.Page;
 import searchengine.model.Site;
 import searchengine.util.HibernateUtil;
 
@@ -163,6 +167,20 @@ public class LemmaDao implements Dao<Lemma>{
         session.remove(lemma);
         transaction.commit();
         session.close();
+    }
+
+    public int getCount(Site site) {
+        Session session = sessionFactory.openSession();
+        CriteriaBuilder criteriaBuilder = session.getCriteriaBuilder();
+
+        CriteriaQuery<Long> criteria = criteriaBuilder.createQuery(Long.class);
+        Root<Lemma> root = criteria.from(Lemma.class);
+        criteria.select(criteriaBuilder.count(root))
+                .where(criteriaBuilder.equal(root.get("site"), site));
+
+        Query<Long> query = session.createQuery(criteria);
+        Long count = query.getSingleResult();
+        return Math.toIntExact(count);
     }
 
     private boolean isExists(Lemma lemma, Session session) {

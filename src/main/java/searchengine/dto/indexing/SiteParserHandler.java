@@ -5,6 +5,8 @@ import searchengine.dao.*;
 import searchengine.model.Page;
 import searchengine.model.Site;
 import searchengine.model.Status;
+import searchengine.services.IndexingService;
+import searchengine.services.IndexingServiceImpl;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -31,8 +33,7 @@ public class SiteParserHandler implements Runnable {
         Site s = createSiteInstance(site);
         siteDao.saveOrUpdate(s);
 
-        HashSet<Page> temp = getPagesFromSite(s);
-        HashSet<Page> pages = new HashSet<>(temp);
+        HashSet<Page> pages = getPagesFromSite(s);
 
         if (pages != null) {
             pages.removeIf(page -> page.getContent() == null);
@@ -55,8 +56,6 @@ public class SiteParserHandler implements Runnable {
 
             lemmaDao.saveOrUpdate(PageIndexer.getLemmas());
             indexDao.saveOrUpdateBatch(PageIndexer.getIndexes());
-
-            siteDao.saveOrUpdate(s);
         }
 
         if (stop)
@@ -65,6 +64,7 @@ public class SiteParserHandler implements Runnable {
         s.setStatus(Status.INDEXED);
         saveOrUpdateSite(s);
         System.out.println(System.currentTimeMillis() - start);
+        IndexingServiceImpl.setIsStarted(false);
     }
 
     /**

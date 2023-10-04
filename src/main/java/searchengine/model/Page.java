@@ -1,17 +1,18 @@
 package searchengine.model;
 
-import lombok.Getter;
-import lombok.Setter;
-
-import jakarta.persistence.*;
 import jakarta.persistence.Index;
-import java.io.Serializable;
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.proxy.HibernateProxy;
 
-import java.util.Comparator;
+import java.io.Serializable;
 import java.util.List;
+import java.util.Objects;
 
 @Getter
 @Setter
+@ToString
+@RequiredArgsConstructor
 @Entity
 @Table(indexes = {
         @Index(name = "path_index", columnList = "path")
@@ -24,6 +25,7 @@ public class Page implements Serializable {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "site_id", nullable = false)
+    @ToString.Exclude
     private Site site;
 
     @Column(name = "\"path\"", columnDefinition = "VARCHAR(255)", nullable = false)
@@ -36,28 +38,45 @@ public class Page implements Serializable {
     private String content;
 
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "page")
+    @ToString.Exclude
     private List<searchengine.model.Index> indexes;
 
+//    @Override
+//    public int hashCode() {
+//        int result = id;
+//        result += result * 31 + (path != null ? path.hashCode() : 0);
+//        result += code;
+//        result += result * 31 + (content != null ? content.hashCode() : 0);
+//        return result;
+//    }
+
+//    @Override
+//    public boolean equals(Object obj) {
+//        if (this == obj){
+//            return true;
+//        }
+//
+//        if (obj instanceof Page p) {
+//            if (p.path != null && !p.path.isBlank())
+//                return this.path.equals(p.path);
+//        }
+//
+//        return false;
+//    }
+
     @Override
-    public int hashCode() {
-        int result = id;
-        result += result * 31 + (path != null ? path.hashCode() : 0);
-        result += code;
-        result += result * 31 + (content != null ? content.hashCode() : 0);
-        return result;
+    public final boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null) return false;
+        Class<?> oEffectiveClass = o instanceof HibernateProxy ? ((HibernateProxy) o).getHibernateLazyInitializer().getPersistentClass() : o.getClass();
+        Class<?> thisEffectiveClass = this instanceof HibernateProxy ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass() : this.getClass();
+        if (thisEffectiveClass != oEffectiveClass) return false;
+        Page page = (Page) o;
+        return getPath() != null && Objects.equals(getPath() , page.getPath());
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj){
-            return true;
-        }
-
-        if (obj instanceof Page p) {
-            if (!p.path.isBlank())
-                return this.path.equals(p.path);
-        }
-
-        return false;
+    public final int hashCode() {
+        return this instanceof HibernateProxy ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass().hashCode() : getClass().hashCode();
     }
 }
