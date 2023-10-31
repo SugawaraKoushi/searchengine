@@ -83,7 +83,7 @@ public class SiteDao implements Dao<Site> {
         }
 
         transaction.commit();
-        session.clear();
+        session.close();
     }
 
     @Override

@@ -102,7 +102,7 @@ public class PageIndexer implements Callable<Integer> {
                         }
                     }
                 } else {
-                    PageIndexer.lemmas.add(lemma);
+                     PageIndexer.lemmas.add(lemma);
                 }
 
                 synchronized (PageIndexer.indexes) {

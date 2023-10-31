@@ -119,6 +119,7 @@ public class IndexDao implements Dao<Index> {
             session.persist(index);
             i++;
         }
+
         transaction.commit();
         session.close();
     }

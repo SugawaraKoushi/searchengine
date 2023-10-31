@@ -2,9 +2,8 @@ package searchengine.controllers;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import searchengine.dto.indexing.Response.FailureResponse;
 import searchengine.dto.indexing.Response.Response;
-import searchengine.dto.indexing.Response.SearchFailureResponse;
-import searchengine.dto.indexing.Response.SearchSuccessResponse;
 import searchengine.dto.statistics.StatisticsResponse;
 import searchengine.services.IndexingService;
 import searchengine.services.StatisticsService;
@@ -26,41 +25,47 @@ public class ApiController {
     }
 
     @GetMapping("/startIndexing")
-    public ResponseEntity<String> startIndexing() {
-        String responseText = indexingService.startIndexing() == 0 ?
-                "{ \"result\": true }" : "{ \"result\": false, \"error\": \"Индексация уже запущена\" }";
-        return ResponseEntity.ok(responseText);
+    public ResponseEntity<Response> startIndexing() {
+        int code = 200;
+        Response response = indexingService.startIndexing();
+
+        if (response instanceof FailureResponse) {
+            code = 500;
+        }
+
+        return ResponseEntity.status(code).body(response);
     }
 
     @GetMapping("/stopIndexing")
-    public ResponseEntity<String> stopIndexing() {
-        String responseText = indexingService.stopIndexing() == 0 ?
-                "{ \"result\": true }" : "{ \"result\": false, \"error\": \"Индексация не запущена\" }";
-        return ResponseEntity.ok(responseText);
+    public ResponseEntity<Response> stopIndexing() {
+        int code = 200;
+        Response response = indexingService.stopIndexing();
+
+        if (response instanceof FailureResponse) {
+            code = 500;
+        }
+
+        return ResponseEntity.status(code).body(response);
     }
 
     @PostMapping("/indexPage")
-    public ResponseEntity<String> indexPage(String url) {
-        String responseText;
-        int indexPageResponse = indexingService.indexPage(url);
+    public ResponseEntity<Response> indexPage(String url) {
+        int code = 200;
+        Response response = indexingService.indexPage(url);
 
-        if (indexPageResponse == 0) {
-            responseText = "{ \"result\": true }";
-            return ResponseEntity.ok(responseText);
-        } else {
-            responseText = "{ \"result\": false, " +
-                    "\"error\": \"Данная страница находится за пределами сайтов," +
-                    "указанных в конфигурационном файле\" }";
-            return ResponseEntity.status(400).body(responseText);
+        if (response instanceof FailureResponse) {
+            code = 400;
         }
+
+        return ResponseEntity.status(code).body(response);
     }
 
     @GetMapping("/search")
     public ResponseEntity<Response> search(String query, int offset, int limit, String site) {
         Response response = indexingService.search(query, site, offset, limit);
         int code = 200;
-        if (response instanceof SearchFailureResponse) {
-            code = 404;
+        if (response instanceof FailureResponse) {
+            code = 400;
         }
 
         return ResponseEntity.status(code).body(response);

@@ -108,7 +108,7 @@ public class PageDao implements Dao<Page> {
         }
 
         transaction.commit();
-        session.clear();
+        session.close();
     }
 
     public int getCount(Site site) {

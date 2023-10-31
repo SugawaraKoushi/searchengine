@@ -3,6 +3,6 @@ package searchengine.dto.indexing.Response;
 import lombok.Data;
 
 @Data
-public class SearchFailureResponse extends Response {
+public class FailureResponse extends Response {
     private String error;
 }

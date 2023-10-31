@@ -12,11 +12,8 @@ import searchengine.dao.PageDao;
 import searchengine.dao.SiteDao;
 import searchengine.dto.indexing.LemmaFinder;
 import searchengine.dto.indexing.PageIndexer;
-import searchengine.dto.indexing.Response.Response;
-import searchengine.dto.indexing.Response.SearchFailureResponse;
+import searchengine.dto.indexing.Response.*;
 import searchengine.dto.indexing.SiteParserHandler;
-import searchengine.dto.indexing.Response.SearchItem;
-import searchengine.dto.indexing.Response.SearchSuccessResponse;
 import searchengine.model.Index;
 import searchengine.model.Lemma;
 import searchengine.model.Page;
@@ -46,12 +43,16 @@ public class IndexingServiceImpl implements IndexingService {
      * @return Успешность запуска.
      */
     @Override
-    public int startIndexing() {
+    public Response startIndexing() {
         handlers = new ArrayList<>();
         threads = new ArrayList<>();
 
-        if (isStarted)
-            return -1;
+        if (isStarted) {
+            FailureResponse response = new FailureResponse();
+            response.setResult(false);
+            response.setError("Индексация уже запущена");
+            return response;
+        }
 
         isStarted = true;
         createSiteParserHandlers();
@@ -64,7 +65,10 @@ public class IndexingServiceImpl implements IndexingService {
             thread.start();
         }
 
-        return 0;
+        Response response = new Response();
+        response.setResult(true);
+
+        return response;
     }
 
     /**
@@ -73,9 +77,13 @@ public class IndexingServiceImpl implements IndexingService {
      * @return Успешность остановки.
      */
     @Override
-    public int stopIndexing() {
-        if (!isStarted)
-            return -1;
+    public Response stopIndexing() {
+        if (!isStarted) {
+            FailureResponse response = new FailureResponse();
+            response.setResult(false);
+            response.setError("Индексация не запущена");
+            return response;
+        }
 
         for (SiteParserHandler handler : handlers) {
             handler.stopParsing();
@@ -86,7 +94,11 @@ public class IndexingServiceImpl implements IndexingService {
         }
 
         isStarted = false;
-        return 0;
+
+        Response response = new Response();
+        response.setResult(true);
+
+        return response;
     }
 
     /**
@@ -96,7 +108,7 @@ public class IndexingServiceImpl implements IndexingService {
      * @return Успешность индексации страницы.
      */
     @Override
-    public int indexPage(String url) {
+    public Response indexPage(String url) {
         Matcher matcher = URL_PATTERN.matcher(url);
         Site site = new Site();
 
@@ -123,11 +135,18 @@ public class IndexingServiceImpl implements IndexingService {
                 PageIndexer indexer = new PageIndexer(s, p);
                 indexer.index();
 
-                return 0;
+                Response response = new Response();
+                response.setResult(true);
+
+                return response;
             }
         }
 
-        return -1;
+        FailureResponse response = new FailureResponse();
+        response.setResult(false);
+        response.setError("Данная страница находится за пределами сайтов, указанных в конфигурационном файле");
+
+        return response;
     }
 
     /**
@@ -141,14 +160,26 @@ public class IndexingServiceImpl implements IndexingService {
      */
     @Override
     public Response search(String query, String site, int offset, int limit) {
-        String[] errors = new String[]{"Сайт не проиндексирован", "Страницы не найдены"};
+        String[] errors = new String[]{
+                "Сайт не проиндексирован",
+                "Страницы не найдены",
+                "Задан пустой поисковый запрос"
+        };
         searchengine.model.Site s = new searchengine.model.Site();
         s.setUrl(site);
         s = siteDao.get(s).orElse(null);
 
+        // Пустой поисковый запрос
+        if (query.isBlank()) {
+            FailureResponse response = new FailureResponse();
+            response.setResult(false);
+            response.setError(errors[2]);
+            return response;
+        }
+
         // Сайт не проиндексирован
         if (s == null) {
-            SearchFailureResponse response = new SearchFailureResponse();
+            FailureResponse response = new FailureResponse();
             response.setResult(false);
             response.setError(errors[0]);
             return response;
@@ -161,7 +192,7 @@ public class IndexingServiceImpl implements IndexingService {
 
         // Нет страниц с такими леммами
         if (lemmasList == null || lemmasList.isEmpty()) {
-            SearchFailureResponse response = new SearchFailureResponse();
+            FailureResponse response = new FailureResponse();
             response.setResult(false);
             response.setError(errors[1]);
             return response;
@@ -184,7 +215,7 @@ public class IndexingServiceImpl implements IndexingService {
                 indexList = indexDao.getListByLemma(lemmasList.get(i)).orElse(null);
                 // Не найдено индексов с искомыми леммами
                 if (indexList == null || indexList.isEmpty()) {
-                    SearchFailureResponse response = new SearchFailureResponse();
+                    FailureResponse response = new FailureResponse();
                     response.setResult(false);
                     response.setError(errors[1]);
                     return response;
@@ -198,7 +229,7 @@ public class IndexingServiceImpl implements IndexingService {
         }
 
         if (pagesList == null || pagesList.isEmpty()) {
-            SearchFailureResponse response = new SearchFailureResponse();
+            FailureResponse response = new FailureResponse();
             response.setResult(false);
             response.setError(errors[1]);
             return response;
