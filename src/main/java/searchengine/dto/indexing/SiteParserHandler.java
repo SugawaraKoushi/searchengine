@@ -10,6 +10,8 @@ import searchengine.services.IndexingServiceImpl;
 
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @RequiredArgsConstructor
 public class SiteParserHandler implements Runnable {
@@ -30,7 +32,14 @@ public class SiteParserHandler implements Runnable {
     @Override
     public void run() {
         long start = System.currentTimeMillis();
-        Site s = createSiteInstance(site);
+        Site s = siteDao.get(createSiteInstance(site)).orElse(null);
+        if (s != null) {
+            s.setStatus(Status.INDEXING);
+            s.setStatusTime(new Date());
+        } else {
+            s = createSiteInstance(site);
+        }
+
         siteDao.saveOrUpdate(s);
 
         HashSet<Page> pages = getPagesFromSite(s);
@@ -54,7 +63,7 @@ public class SiteParserHandler implements Runnable {
 
             executorShutdown(executor);
 
-            lemmaDao.saveOrUpdate(PageIndexer.getLemmas());
+            lemmaDao.saveOrUpdateBatch(PageIndexer.getLemmas());
             indexDao.saveOrUpdateBatch(PageIndexer.getIndexes());
         }
 

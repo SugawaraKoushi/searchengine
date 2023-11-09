@@ -22,6 +22,7 @@ import searchengine.model.Status;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -165,26 +166,29 @@ public class IndexingServiceImpl implements IndexingService {
                 "Страницы не найдены",
                 "Задан пустой поисковый запрос"
         };
-        searchengine.model.Site s = new searchengine.model.Site();
-        s.setUrl(site);
-        s = siteDao.get(s).orElse(null);
 
         // Пустой поисковый запрос
         if (query.isBlank()) {
-            FailureResponse response = new FailureResponse();
-            response.setResult(false);
-            response.setError(errors[2]);
-            return response;
+            return createFailureResponse(errors[2]);
         }
 
-        // Сайт не проиндексирован
-        if (s == null) {
-            FailureResponse response = new FailureResponse();
-            response.setResult(false);
-            response.setError(errors[0]);
-            return response;
+        List<searchengine.model.Site> sites = new ArrayList<>();
+        if (site == null) {
+            sites = siteDao.getAll().orElse(new ArrayList<>());
+        } else {
+            searchengine.model.Site s = new searchengine.model.Site();
+            s.setUrl(site);
+            s = siteDao.get(s).orElse(null);
+            sites.add(s);
         }
 
+        sites.removeIf(Objects::isNull);
+        // Ни один из сайтов не проиндексирован
+        if (sites.isEmpty()) {
+            return createFailureResponse(errors[0]);
+        }
+
+        // Формируем леммы из поискового запроса
         HashMap<String, Integer> lemmasMap = lemmaFinder.getLemmas(query);
         List<String> words = new ArrayList<>();
         lemmasMap.forEach((k, v) -> words.add(k));
@@ -192,81 +196,106 @@ public class IndexingServiceImpl implements IndexingService {
 
         // Нет страниц с такими леммами
         if (lemmasList == null || lemmasList.isEmpty()) {
-            FailureResponse response = new FailureResponse();
-            response.setResult(false);
-            response.setError(errors[1]);
-            return response;
+            return createFailureResponse(errors[1]);
         }
 
-        searchengine.model.Site tempS = s;
-        lemmasList = new ArrayList<>(lemmasList
-                .stream()
-                .filter(l -> l.getSite().equals(tempS) && lemmasMap.containsKey(l.getLemma()))
-                .toList());
+        HashMap<Page, Float> relevantPages = new HashMap<>();
+        for (searchengine.model.Site s : sites) {
+            // Находим леммы текущего сайта
+            List<Lemma> lemmas = new ArrayList<>(lemmasList
+                    .stream()
+                    .filter(l -> l.getSite().equals(s) && lemmasMap.containsKey(l.getLemma()))
+                    .toList());
+            lemmas.sort(Lemma::compareTo);
 
-        lemmasList.sort(Lemma::compareTo);
+            // Находим страницы текущего сайта, в которых присутствуют все леммы
+            List<Page> pages = getPagesContainingAllLemmas(lemmas);
 
-        List<Page> pagesList = new ArrayList<>();
-        List<Index> indexList;
-
-        for (int i = 0; i < lemmasList.size(); i++) {
-
-            if (i == 0) {
-                indexList = indexDao.getListByLemma(lemmasList.get(i)).orElse(null);
-                // Не найдено индексов с искомыми леммами
-                if (indexList == null || indexList.isEmpty()) {
-                    FailureResponse response = new FailureResponse();
-                    response.setResult(false);
-                    response.setError(errors[1]);
-                    return response;
-                }
-
-                pagesList = pageDao.getListByIndexes(indexList).orElse(null);
-            } else {
-                List<Index> temp = indexDao.getListByLemma(lemmasList.get(i)).orElse(new ArrayList<>());
-                pagesList.removeIf(page -> temp.stream().noneMatch(e -> e.getPage().getId() == page.getId()));
-            }
+            // Находим относительную релевантность для каждой из найденной страницы
+            relevantPages.putAll(getRelevantPages(pages, lemmas));
         }
 
-        if (pagesList == null || pagesList.isEmpty()) {
-            FailureResponse response = new FailureResponse();
-            response.setResult(false);
-            response.setError(errors[1]);
-            return response;
+        if (relevantPages.isEmpty()) {
+            return createFailureResponse(errors[1]);
         }
 
-        HashMap<Page, Float> foundPages = new HashMap<>();
-        float maxRelevance = 0.0f;
-        for (Page page : pagesList) {
-            for (Lemma lemma : lemmasList) {
-                Index index = indexDao.getListByPageAndLemma(page, lemma).orElse(null);
-                float rank = index.getRank();
-
-                if (!foundPages.containsKey(page)) {
-                    foundPages.put(page, rank);
-                } else {
-                    float relevance = foundPages.get(page) + rank;
-                    maxRelevance = Math.max(maxRelevance, relevance);
-                    foundPages.put(page, relevance);
-                }
-            }
-        }
-
-        for (Map.Entry<Page, Float> entry : foundPages.entrySet()) {
-            foundPages.put(entry.getKey(), entry.getValue() / maxRelevance);
-        }
-
-        List<Map.Entry<Page, Float>> sortedByRelevance = new ArrayList<>(foundPages.entrySet());
+        // Сортируем страницы по релевантности
+        List<Map.Entry<Page, Float>> sortedByRelevance = new ArrayList<>(relevantPages.entrySet());
         sortedByRelevance.sort(Map.Entry.comparingByValue());
+
+//        searchengine.model.Site tempS = s;
+//        lemmasList = new ArrayList<>(lemmasList
+//                .stream()
+//                .filter(l -> l.getSite().equals(tempS) && lemmasMap.containsKey(l.getLemma()))
+//                .toList());
+//
+//        lemmasList.sort(Lemma::compareTo);
+//
+//        List<Page> pagesList = new ArrayList<>();
+//        List<Index> indexList;
+//
+//        for (int i = 0; i < lemmasList.size(); i++) {
+//
+//            if (i == 0) {
+//                indexList = indexDao.getListByLemma(lemmasList.get(i)).orElse(null);
+//                // Не найдено индексов с искомыми леммами
+//                if (indexList == null || indexList.isEmpty()) {
+//                    FailureResponse response = new FailureResponse();
+//                    response.setResult(false);
+//                    response.setError(errors[1]);
+//                    return response;
+//                }
+//
+//                pagesList = pageDao.getListByIndexes(indexList).orElse(null);
+//            } else {
+//                List<Index> temp = indexDao.getListByLemma(lemmasList.get(i)).orElse(new ArrayList<>());
+//                pagesList.removeIf(page -> temp.stream().noneMatch(e -> e.getPage().getId() == page.getId()));
+//            }
+//        }
+//
+//        if (pagesList == null || pagesList.isEmpty()) {
+//            FailureResponse response = new FailureResponse();
+//            response.setResult(false);
+//            response.setError(errors[1]);
+//            return response;
+//        }
+//
+//        HashMap<Page, Float> foundPages = new HashMap<>();
+//        float maxRelevance = 0.0f;
+//        for (Page page : pagesList) {
+//            for (Lemma lemma : lemmasList) {
+//                Index index = indexDao.getListByPageAndLemma(page, lemma).orElse(null);
+//                float rank = index.getRank();
+//
+//                if (!foundPages.containsKey(page)) {
+//                    foundPages.put(page, rank);
+//                } else {
+//                    float relevance = foundPages.get(page) + rank;
+//                    maxRelevance = Math.max(maxRelevance, relevance);
+//                    foundPages.put(page, relevance);
+//                }
+//            }
+//        }
+//
+//        for (Map.Entry<Page, Float> entry : foundPages.entrySet()) {
+//            foundPages.put(entry.getKey(), entry.getValue() / maxRelevance);
+//        }
+//
+//        List<Map.Entry<Page, Float>> sortedByRelevance = new ArrayList<>(foundPages.entrySet());
+//        sortedByRelevance.sort(Map.Entry.comparingByValue());
 
         SearchSuccessResponse response = new SearchSuccessResponse();
         response.setResult(true);
         response.setCount(sortedByRelevance.size());
-        response.setData(getSearchData(sortedByRelevance, limit, offset, s, query));
+        response.setData(getSearchData(sortedByRelevance, limit, offset, query));
 
         return response;
     }
 
+    /**
+     * Устанавливает значение флага запуска
+     * @param value значение флага
+     */
     public static void setIsStarted(boolean value) {
         isStarted = value;
     }
@@ -277,12 +306,61 @@ public class IndexingServiceImpl implements IndexingService {
         }
     }
 
-    private List<SearchItem> getSearchData(List<Map.Entry<Page, Float>> pages, int limit, int offset, searchengine.model.Site site, String query) {
+    private FailureResponse createFailureResponse(String error) {
+        FailureResponse response = new FailureResponse();
+        response.setResult(false);
+        response.setError(error);
+        return response;
+    }
+
+    private List<Page> getPagesContainingAllLemmas(List<Lemma> lemmas) {
+        List<Index> indexes = indexDao.getListByLemma(lemmas.get(0)).orElse(null);
+        if (indexes == null) {
+            return new ArrayList<>();
+        }
+        List<Page> pages = pageDao.getListByIndexes(indexes).orElse(new ArrayList<>());
+
+        for (int i = 1; i < lemmas.size(); i++) {
+            List<Index> temp = indexDao.getListByLemma(lemmas.get(i)).orElse(new ArrayList<>());
+            pages.removeIf(page -> temp.stream().noneMatch(e -> e.getPage().getId() == page.getId()));
+        }
+
+        return pages;
+    }
+
+    private HashMap<Page, Float> getRelevantPages(List<Page> pages, List<Lemma> lemmas) {
+        HashMap<Page, Float> relevantPages = new HashMap<>();
+        float maxRelevance = 0.0f;
+
+        for (Page page : pages) {
+            for (Lemma lemma : lemmas) {
+                Index index = indexDao.getListByPageAndLemma(page, lemma).orElse(null);
+                float rank = index.getRank();
+
+                if (!relevantPages.containsKey(page)) {
+                    relevantPages.put(page, rank);
+                } else {
+                    float relevance = relevantPages.get(page) + rank;
+                    maxRelevance = Math.max(maxRelevance, relevance);
+                    relevantPages.put(page, relevance);
+                }
+            }
+        }
+
+        for (Map.Entry<Page, Float> entry : relevantPages.entrySet()) {
+            relevantPages.put(entry.getKey(), entry.getValue() / maxRelevance);
+        }
+
+        return relevantPages;
+    }
+
+    private List<SearchItem> getSearchData(List<Map.Entry<Page, Float>> pages, int limit, int offset, String query) {
         List<SearchItem> items = new ArrayList<>();
         int from = pages.size() - offset - 1;
         int to = Math.max(pages.size() - limit - offset, 0);
 
         for (int i = from; i >= to; i--) {
+            searchengine.model.Site site = pages.get(i).getKey().getSite();
             SearchItem item = new SearchItem();
             item.setSite(site.getUrl());
             item.setSiteName(site.getName());

@@ -81,7 +81,7 @@ public class IndexDao implements Dao<Index> {
         session.close();
     }
 
-    public void saveOrUpdateBatch(Collection<Index> indexes) {
+    public synchronized void saveOrUpdateBatch(Collection<Index> indexes) {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
         int i = 0;

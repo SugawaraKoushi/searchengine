@@ -10,6 +10,7 @@ import searchengine.model.*;
 
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 @RequiredArgsConstructor
 public class PageIndexer implements Callable<Integer> {
@@ -18,16 +19,16 @@ public class PageIndexer implements Callable<Integer> {
     private final PageDao pageDao = new PageDao();
     private final SiteDao siteDao = new SiteDao();
     @Getter
-    private static List<Lemma> lemmas = new ArrayList<>();
+    private static CopyOnWriteArrayList<Lemma> lemmas = new CopyOnWriteArrayList<>();
     @Getter
-    private static List<Index> indexes = new ArrayList<>();
+    private static CopyOnWriteArrayList<Index> indexes = new CopyOnWriteArrayList<>();
     private Site site;
     private Page page;
 
-    static {
-        lemmas = Collections.synchronizedList(lemmas);
-        indexes = Collections.synchronizedList(indexes);
-    }
+//    static {
+//        lemmas = Collections.synchronizedList(lemmas);
+//        indexes = Collections.synchronizedList(indexes);
+//    }
 
     private static final LemmaFinder lemmaFinder = LemmaFinder.getInstance();
 

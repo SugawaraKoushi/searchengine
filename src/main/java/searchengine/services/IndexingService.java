@@ -11,5 +11,5 @@ public interface IndexingService {
 
     Response indexPage(String url);
 
-    Response search(String query, String site, @Nullable int offset, @Nullable int limit);
+    Response search(String query, @Nullable String site, @Nullable int offset, @Nullable int limit);
 }

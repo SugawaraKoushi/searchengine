@@ -89,25 +89,6 @@ public class LemmaDao implements Dao<Lemma>{
         session.close();
     }
 
-    public void saveBatch(Collection<Lemma> lemmas) {
-        Session session = sessionFactory.openSession();
-        Transaction transaction = session.beginTransaction();
-
-        int i = 0;
-
-        for (Lemma lemma : lemmas) {
-            if (i > 0 && i % BATCH_SIZE == 0) {
-                session.flush();
-                session.clear();
-            }
-            session.persist(lemma);
-            i++;
-        }
-
-        transaction.commit();
-        session.close();
-    }
-
     @Override
     public void update(Lemma lemma) {
         Session session = sessionFactory.openSession();
@@ -118,24 +99,7 @@ public class LemmaDao implements Dao<Lemma>{
         session.close();
     }
 
-    public void updateBatch(Collection<Lemma> lemmas) {
-        Session session = sessionFactory.openSession();
-        Transaction transaction = session.beginTransaction();
-        int i = 0;
-
-        for (Lemma lemma : lemmas) {
-            if (i > 0 && i % BATCH_SIZE == 0) {
-                session.flush();
-                session.clear();
-            }
-            session.merge(lemma);
-            i++;
-        }
-        transaction.commit();
-        session.close();
-    }
-
-    public void saveOrUpdate(List<Lemma> lemmas) {
+    public synchronized void saveOrUpdateBatch(List<Lemma> lemmas) {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
         int i = 0;

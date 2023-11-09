@@ -18,7 +18,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.RecursiveTask;
 import java.util.concurrent.TimeUnit;
-
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class SiteParser extends RecursiveTask<HashSet<Page>> {
     private static boolean stop = false;
@@ -40,7 +41,7 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
     protected HashSet<Page> compute() {
         HashSet<Page> result = new HashSet<>();         // Все страницы с сайта
         List<SiteParser> tasks = new ArrayList<>();     // Таски
-        logger.info("Start parsing: " + site.getUrl() + page.getPath());
+        logger.info("Start parsing: " + getRoot(site.getUrl()) + page.getPath());
         HashSet<Page> pages = handle(page);             // Страницы из текущей
 
         page.setSite(site);
@@ -68,11 +69,13 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
 
         }
 
+        logger.info("End parsing: " + getRoot(site.getUrl()) + page.getPath());
         return result;
     }
 
     private HashSet<Page> handle(Page page) {
         if (stop) {
+            logger.info("User stop the parsing");
             updateSiteLastError("Индексация остановлена пользователем");
             updateSiteStatus(Status.FAILED);
             return null;
@@ -81,7 +84,7 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
         HashSet<Page> result = new HashSet<>();
 
         try {
-            Connection.Response response = Jsoup.connect(site.getUrl() + page.getPath())
+            Connection.Response response = Jsoup.connect(getRoot(site.getUrl()) + page.getPath())
                     .userAgent("BobTheSearcherBot")
                     .referrer("http://www.google.com")
                     .timeout(60000)
@@ -157,5 +160,16 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
 
     public void setStop(boolean value) {
         stop = value;
+    }
+
+    private String getRoot(String url) {
+        Pattern urlPattern = Pattern.compile("(?<root>https?://[^/]+)(?<path>.+)?");
+        Matcher matcher = urlPattern.matcher(url);
+
+        if (matcher.find()) {
+            return matcher.group("root");
+        }
+
+        return url;
     }
 }
