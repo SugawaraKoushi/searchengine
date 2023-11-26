@@ -41,29 +41,6 @@ public class Page implements Serializable {
     @ToString.Exclude
     private List<searchengine.model.Index> indexes;
 
-//    @Override
-//    public int hashCode() {
-//        int result = id;
-//        result += result * 31 + (path != null ? path.hashCode() : 0);
-//        result += code;
-//        result += result * 31 + (content != null ? content.hashCode() : 0);
-//        return result;
-//    }
-
-//    @Override
-//    public boolean equals(Object obj) {
-//        if (this == obj){
-//            return true;
-//        }
-//
-//        if (obj instanceof Page p) {
-//            if (p.path != null && !p.path.isBlank())
-//                return this.path.equals(p.path);
-//        }
-//
-//        return false;
-//    }
-
     @Override
     public final boolean equals(Object o) {
         if (this == o) return true;

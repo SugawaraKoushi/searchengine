@@ -1,17 +1,14 @@
 package searchengine.dto.indexing;
 
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import searchengine.dao.*;
-import searchengine.model.Page;
-import searchengine.model.Site;
-import searchengine.model.Status;
-import searchengine.services.IndexingService;
+import searchengine.model.*;
 import searchengine.services.IndexingServiceImpl;
 
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @RequiredArgsConstructor
 public class SiteParserHandler implements Runnable {
@@ -21,6 +18,7 @@ public class SiteParserHandler implements Runnable {
     private final LemmaDao lemmaDao = new LemmaDao();
     private final IndexDao indexDao = new IndexDao();
     private boolean stop = false;
+    private final Logger logger = LoggerFactory.getLogger(SiteParser.class);
 
     public SiteParserHandler(searchengine.config.Site site) {
         this.site = site;
@@ -31,7 +29,9 @@ public class SiteParserHandler implements Runnable {
      */
     @Override
     public void run() {
+        logger.info("Start parsing: " + site.getUrl());
         long start = System.currentTimeMillis();
+
         Site s = siteDao.get(createSiteInstance(site)).orElse(null);
         if (s != null) {
             s.setStatus(Status.INDEXING);
@@ -48,7 +48,7 @@ public class SiteParserHandler implements Runnable {
             pages.removeIf(page -> page.getContent() == null);
             s.setPages(pages);
 
-            ExecutorService executor = Executors.newFixedThreadPool(4);
+            ExecutorService executor = Executors.newFixedThreadPool(2);
             List<PageIndexer> pageIndexers = new ArrayList<>();
 
             for (Page page : pages) {
@@ -62,9 +62,26 @@ public class SiteParserHandler implements Runnable {
             }
 
             executorShutdown(executor);
+            Site finalS = s;
+            Set<Lemma> currentSiteLemmas = new HashSet<>(
+                    PageIndexer.getLemmas().values()
+                            .stream()
+                            .filter(l -> l.getSite().getId() == finalS.getId())
+                            .toList()
+            );
+            lemmaDao.saveOrUpdateBatch(currentSiteLemmas);
+            for (Map.Entry<String, Lemma> entry : PageIndexer.getLemmas().entrySet()) {
+                if (currentSiteLemmas.contains(entry.getValue())) {
+                    PageIndexer.getLemmas().remove(entry.getKey());
+                }
+            }
 
-            lemmaDao.saveOrUpdateBatch(PageIndexer.getLemmas());
-            indexDao.saveOrUpdateBatch(PageIndexer.getIndexes());
+            List<Index> currentSiteIndexes = PageIndexer.getIndexes()
+                    .stream()
+                    .filter(i -> i.getPage().getSite().getId() == finalS.getId())
+                    .toList();
+            indexDao.saveOrUpdateBatch(currentSiteIndexes);
+            PageIndexer.getIndexes().removeAll(currentSiteIndexes);
         }
 
         if (stop)
@@ -72,7 +89,8 @@ public class SiteParserHandler implements Runnable {
 
         s.setStatus(Status.INDEXED);
         saveOrUpdateSite(s);
-        System.out.println(System.currentTimeMillis() - start);
+        logger.info("End parsing: " + site.getUrl());
+        logger.info("Parsing " + site.getUrl() + " took " + (System.currentTimeMillis() - start) + " ms");
         IndexingServiceImpl.setIsStarted(false);
     }
 
@@ -86,6 +104,7 @@ public class SiteParserHandler implements Runnable {
 
     /**
      * Создает экземпляр объекта класса model.Site.
+     *
      * @param site Данные о сайте из application.yaml
      * @return объект класса model.Site
      */

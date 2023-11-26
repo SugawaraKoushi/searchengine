@@ -1,14 +1,16 @@
 package searchengine.model;
 
-import lombok.Getter;
-import lombok.Setter;
-
 import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.proxy.HibernateProxy;
+
 import java.io.Serializable;
 import java.util.List;
+import java.util.Objects;
 
 @Getter
 @Setter
+@RequiredArgsConstructor
 @Entity
 @Table
 public class Lemma implements Serializable, Comparable<Lemma>{
@@ -27,34 +29,39 @@ public class Lemma implements Serializable, Comparable<Lemma>{
     @Column(nullable = false)
     private int frequency;
 
-    @OneToMany(cascade = CascadeType.REMOVE, fetch = FetchType.EAGER, mappedBy = "lemma")
+    @OneToMany(cascade = CascadeType.REMOVE, fetch = FetchType.LAZY, mappedBy = "lemma")
     private List<Index> indexes;
-
-    @Override
-    public int hashCode() {
-        int result = id;
-        result += result * 31 + (lemma.isBlank() ? 0 : lemma.hashCode());
-        result += result * 31 + frequency;
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-
-        if (obj instanceof Lemma l) {
-            if (!l.lemma.isBlank()) {
-                return l.lemma.equals(this.lemma) && l.site.getId() == this.site.getId();
-            }
-        }
-
-        return false;
-    }
 
     @Override
     public int compareTo(Lemma l) {
         return Integer.compare(this.frequency, l.frequency);
     }
+
+    @Override
+    public final boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null) return false;
+        Class<?> oEffectiveClass = o instanceof HibernateProxy
+                ? ((HibernateProxy) o).getHibernateLazyInitializer().getPersistentClass()
+                : o.getClass();
+        Class<?> thisEffectiveClass = this instanceof HibernateProxy
+                ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass()
+                : this.getClass();
+        if (thisEffectiveClass != oEffectiveClass) return false;
+        Lemma lemma = (Lemma) o;
+        return getLemma() != null &&
+                getSite().getId() == lemma.getSite().getId() &&
+                Objects.equals(getLemma(), lemma.getLemma());
+    }
+
+    @Override
+    public final int hashCode() {
+        return this instanceof HibernateProxy ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass().hashCode() : getClass().hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return String.format("{%s}", lemma);
+    }
+
 }

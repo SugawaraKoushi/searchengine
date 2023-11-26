@@ -1,26 +1,42 @@
 package searchengine.dao;
 
+import jakarta.persistence.LockModeType;
+import jakarta.persistence.PersistenceException;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Root;
-import org.hibernate.LockMode;
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
-import org.hibernate.Transaction;
+import jakarta.transaction.Transactional;
+import org.hibernate.*;
 import org.hibernate.query.Query;
 import org.springframework.beans.factory.annotation.Autowired;
 import searchengine.model.Lemma;
-import searchengine.model.Page;
 import searchengine.model.Site;
 import searchengine.util.HibernateUtil;
 
 import java.util.*;
 
-public class LemmaDao implements Dao<Lemma>{
+public class LemmaDao implements Dao<Lemma> {
+    private static LemmaDao instance;
     private final static int BATCH_SIZE = 20;
 
     @Autowired
     SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
+
+    public static LemmaDao getInstance() {
+        LemmaDao localInstance = instance;
+
+        if (localInstance == null) {
+            synchronized (LemmaDao.class) {
+                localInstance = instance;
+                if (localInstance == null) {
+                    instance = localInstance = new LemmaDao();
+                }
+            }
+        }
+
+        return localInstance;
+    }
+
     @Override
     public Optional<Lemma> get(int id) {
         Session session = sessionFactory.openSession();
@@ -33,11 +49,15 @@ public class LemmaDao implements Dao<Lemma>{
     @Override
     public Optional<Lemma> get(Lemma lemma) {
         Session session = sessionFactory.openSession();
-        String query = "from " + Lemma.class.getSimpleName() + " where lemma = '" + lemma.getLemma() + "'";
+
+        Query<Lemma> query = session.createQuery("from Lemma where lemma = :lemma and site = :site", Lemma.class);
+        query.setParameter("lemma", lemma.getLemma());
+        query.setParameter("site", lemma.getSite());
+
         Lemma l;
 
         try {
-            l = session.createQuery(query, Lemma.class).getSingleResult();
+            l = query.getSingleResult();
         } catch (Exception e) {
             l = null;
         } finally {
@@ -99,21 +119,46 @@ public class LemmaDao implements Dao<Lemma>{
         session.close();
     }
 
-    public synchronized void saveOrUpdateBatch(List<Lemma> lemmas) {
+    public synchronized Lemma saveOrUpdate(Lemma lemma) {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
+
+        Lemma l = null;
+        try {
+            l = get(lemma).orElse(null);
+            l.setFrequency(l.getFrequency() + lemma.getFrequency());
+            session.merge(l);
+        } catch (Exception e) {
+            session.persist(lemma);
+        } finally {
+            transaction.commit();
+            session.close();
+        }
+
+        return l != null ? l : lemma;
+    }
+
+    public synchronized void saveOrUpdateBatch(Collection<Lemma> lemmas) {
+        Session session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+
         int i = 0;
 
         for (Lemma lemma : lemmas) {
-            if (i > 0 && i % BATCH_SIZE == 0){
+            if (i > 0 && i % BATCH_SIZE == 0) {
                 session.flush();
                 session.clear();
             }
 
-            if (isExists(lemma, session)) {
+            try {
+                Lemma l = get(lemma).orElse(null);
+                lemma.setFrequency(lemma.getFrequency() + l.getFrequency());
+                lemma.setId(l.getId());
                 session.merge(lemma);
-            } else {
+            } catch (NullPointerException e) {
                 session.persist(lemma);
+            } catch (HibernateException e) {
+                e.printStackTrace();
             }
 
             i++;

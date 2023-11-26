@@ -1,5 +1,6 @@
 package searchengine.dao;
 
+import jakarta.transaction.Transactional;
 import org.hibernate.*;
 import org.hibernate.query.Query;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -81,6 +82,21 @@ public class IndexDao implements Dao<Index> {
         session.close();
     }
 
+    public synchronized void saveOrUpdate(Index index) {
+        Session session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+
+        try {
+            session.persist(index);
+        } catch (Exception e) {
+            session.merge(index);
+        } finally {
+            transaction.commit();
+            session.close();
+        }
+    }
+
+    @Transactional
     public synchronized void saveOrUpdateBatch(Collection<Index> indexes) {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
@@ -92,31 +108,14 @@ public class IndexDao implements Dao<Index> {
                 session.clear();
             }
 
-            if (isExists(index, session)) {
-                session.merge(index);
-            } else {
+            try {
                 session.persist(index);
+            } catch (PersistentObjectException e) {
+                session.merge(index);
+            } catch (IllegalStateException e) {
+                e.printStackTrace();
             }
 
-            i++;
-        }
-
-        transaction.commit();
-        session.close();
-    }
-
-
-    public void saveBatch(Collection<Index> indexes) {
-        Session session = sessionFactory.openSession();
-        Transaction transaction = session.beginTransaction();
-        int i = 0;
-
-        for (Index index : indexes) {
-            if (i > 0 && i % BATCH_SIZE == 0) {
-                session.flush();
-                session.clear();
-            }
-            session.persist(index);
             i++;
         }
 

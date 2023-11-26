@@ -4,7 +4,7 @@
 <hibernate-configuration>
     <session-factory>
         <!-- JDBC Database connection settings -->
-        <property name="hibernate.jdbc.batch_size">5</property>
+        <property name="hibernate.jdbc.batch_size">20</property>
         <property name="connection.driver_class">com.mysql.cj.jdbc.Driver</property>
         <property name="connection.url">jdbc:mysql://localhost:3306/search_engine?useSSL=false</property>
         <property name="connection.username">root</property>
@@ -12,7 +12,7 @@
         <!-- JDBC connection pool settings ... using built-in test pool -->
         <property name="connection.pool_size">100</property>
         <!-- Select our SQL dialect -->
-        <property name="dialect">org.hibernate.dialect.MySQL8Dialect</property>
+        <property name="dialect">org.hibernate.dialect.MySQLDialect</property>
         <!-- Echo the SQL to stdout -->
         <property name="show_sql">false</property>
         <!-- Set the current session context -->

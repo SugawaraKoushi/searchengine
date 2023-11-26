@@ -5,30 +5,32 @@ import lombok.RequiredArgsConstructor;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import searchengine.dao.*;
 import searchengine.model.*;
 
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 @RequiredArgsConstructor
 public class PageIndexer implements Callable<Integer> {
-    private final LemmaDao lemmaDao = new LemmaDao();
+    private final LemmaDao lemmaDao = LemmaDao.getInstance();
     private final IndexDao indexDao = new IndexDao();
     private final PageDao pageDao = new PageDao();
     private final SiteDao siteDao = new SiteDao();
+
     @Getter
-    private static CopyOnWriteArrayList<Lemma> lemmas = new CopyOnWriteArrayList<>();
+    private static ConcurrentHashMap<String, Lemma> lemmas = new ConcurrentHashMap<>();
     @Getter
     private static CopyOnWriteArrayList<Index> indexes = new CopyOnWriteArrayList<>();
+
     private Site site;
     private Page page;
-
-//    static {
-//        lemmas = Collections.synchronizedList(lemmas);
-//        indexes = Collections.synchronizedList(indexes);
-//    }
+    private final Logger logger = LoggerFactory.getLogger(SiteParser.class);
 
     private static final LemmaFinder lemmaFinder = LemmaFinder.getInstance();
 
@@ -70,46 +72,22 @@ public class PageIndexer implements Callable<Integer> {
         String text = getTextFromPage(page.getContent());
         HashMap<String, Integer> lemmasMap = lemmaFinder.getLemmas(text);
 
-        List<Lemma> lemmas = new ArrayList<>();
         for (Map.Entry<String, Integer> entry : lemmasMap.entrySet()) {
-            List<Lemma> lemmasToSave = new ArrayList<>();
-            List<Lemma> lemmasToUpdate = new ArrayList<>();
+            Index index;
+            Lemma lemma;
 
-            List<Index> indexes = new ArrayList<>();
-
-            Lemma l = getLemma(entry.getKey());
-            if (l == null) {
-                l = createLemma(entry.getKey(), entry.getValue());
-                lemmasToSave.add(l);
+            if (lemmas.containsKey(entry.getKey())) {
+                lemma = lemmas.get(entry.getKey());
+                int freq = lemma.getFrequency() + entry.getValue();
+                lemma.setFrequency(freq);
             } else {
-                l.setFrequency(l.getFrequency() + entry.getValue());
-                lemmasToUpdate.add(l);
+                lemma = createLemma(entry.getKey(), entry.getValue());
             }
 
-            lemmas.addAll(lemmasToSave);
-            lemmas.addAll(lemmasToUpdate);
-        }
+            lemmas.compute(entry.getKey(), (k, v) -> lemma);
+            index = createIndex(lemma, entry.getValue());
+            indexes.add(index);
 
-        synchronized (PageIndexer.lemmas) {
-            for (Lemma lemma : lemmas) {
-                Lemma buf = lemma;
-                if (PageIndexer.lemmas.contains(lemma)) {
-                    for (int i = 0; i < PageIndexer.lemmas.size(); i++) {
-                        if (PageIndexer.lemmas.get(i).equals(lemma)) {
-                            buf = PageIndexer.lemmas.get(i);
-                            buf.setFrequency(buf.getFrequency() + lemma.getFrequency());
-                            PageIndexer.lemmas.set(i, buf);
-                            break;
-                        }
-                    }
-                } else {
-                     PageIndexer.lemmas.add(lemma);
-                }
-
-                synchronized (PageIndexer.indexes) {
-                    PageIndexer.indexes.add(createIndex(buf, lemma.getFrequency()));
-                }
-            }
         }
     }
 
@@ -186,11 +164,11 @@ public class PageIndexer implements Callable<Integer> {
         siteDao.update(site);
     }
 
-    private Index createIndex(Lemma lemma, int frequency) {
+    private Index createIndex(Lemma lemma, float rank) {
         Index index = new Index();
         index.setPage(page);
         index.setLemma(lemma);
-        index.setRank(frequency);
+        index.setRank(rank);
         return index;
     }
 

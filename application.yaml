@@ -10,6 +10,9 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
+        order_inserts: true
+        order_updates: true
+        batch_versioned_data: true
     hibernate:
       ddl-auto: update
     show-sql: true
