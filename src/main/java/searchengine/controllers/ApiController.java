@@ -65,7 +65,7 @@ public class ApiController {
         Response response = indexingService.search(query, site, offset, limit);
         int code = 200;
         if (response instanceof FailureResponse) {
-            code = 400;
+            code = 404;
         }
 
         return ResponseEntity.status(code).body(response);

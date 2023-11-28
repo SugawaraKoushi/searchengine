@@ -22,7 +22,6 @@ import searchengine.model.Status;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -206,11 +205,14 @@ public class IndexingServiceImpl implements IndexingService {
                     .stream()
                     .filter(l -> l.getSite().equals(s) && lemmasMap.containsKey(l.getLemma()))
                     .toList());
+
+            if (lemmas.isEmpty()) {
+                continue;
+            }
+
             lemmas.sort(Lemma::compareTo);
-
             // Находим страницы текущего сайта, в которых присутствуют все леммы
-            List<Page> pages = getPagesContainingAllLemmas(lemmas);
-
+             List<Page> pages = getPagesContainingAllLemmas(lemmas);
             // Находим относительную релевантность для каждой из найденной страницы
             relevantPages.putAll(getRelevantPages(pages, lemmas));
         }
@@ -339,6 +341,7 @@ public class IndexingServiceImpl implements IndexingService {
 
                 if (!relevantPages.containsKey(page)) {
                     relevantPages.put(page, rank);
+                    maxRelevance = Math.max(maxRelevance, rank);
                 } else {
                     float relevance = relevantPages.get(page) + rank;
                     maxRelevance = Math.max(maxRelevance, relevance);

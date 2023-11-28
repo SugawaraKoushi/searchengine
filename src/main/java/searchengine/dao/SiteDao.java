@@ -1,13 +1,10 @@
 package searchengine.dao;
 
 import jakarta.persistence.NoResultException;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.springframework.beans.factory.annotation.Autowired;
-import searchengine.model.Page;
 import searchengine.model.Site;
 import searchengine.util.HibernateUtil;
 
@@ -46,7 +43,7 @@ public class SiteDao implements Dao<Site> {
     @Override
     public Optional<List<Site>> getAll() {
         Session session = sessionFactory.openSession();
-        List<Site> sites = session.createQuery("from", Site.class).list();
+        List<Site> sites = session.createQuery("from " + Site.class.getSimpleName(), Site.class).list();
         session.close();
 
         return Optional.of(sites);

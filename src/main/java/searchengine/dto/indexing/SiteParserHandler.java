@@ -62,35 +62,17 @@ public class SiteParserHandler implements Runnable {
             }
 
             executorShutdown(executor);
-            Site finalS = s;
-            Set<Lemma> currentSiteLemmas = new HashSet<>(
-                    PageIndexer.getLemmas().values()
-                            .stream()
-                            .filter(l -> l.getSite().getId() == finalS.getId())
-                            .toList()
-            );
-            lemmaDao.saveOrUpdateBatch(currentSiteLemmas);
-            for (Map.Entry<String, Lemma> entry : PageIndexer.getLemmas().entrySet()) {
-                if (currentSiteLemmas.contains(entry.getValue())) {
-                    PageIndexer.getLemmas().remove(entry.getKey());
-                }
-            }
-
-            List<Index> currentSiteIndexes = PageIndexer.getIndexes()
-                    .stream()
-                    .filter(i -> i.getPage().getSite().getId() == finalS.getId())
-                    .toList();
-            indexDao.saveOrUpdateBatch(currentSiteIndexes);
-            PageIndexer.getIndexes().removeAll(currentSiteIndexes);
+            saveAndClearCurrentSiteLemmas(PageIndexer.getLemmas(), s);
+            saveAndClearCurrentSiteIndexes(PageIndexer.getIndexes(), s);
         }
 
         if (stop)
             return;
 
         s.setStatus(Status.INDEXED);
-        saveOrUpdateSite(s);
+        siteDao.saveOrUpdate(s);
         logger.info("End parsing: " + site.getUrl());
-        logger.info("Parsing " + site.getUrl() + " took " + (System.currentTimeMillis() - start) + " ms");
+        logger.info("Parsing " + site.getUrl() + " tooks " + (System.currentTimeMillis() - start) + " ms");
         IndexingServiceImpl.setIsStarted(false);
     }
 
@@ -115,7 +97,6 @@ public class SiteParserHandler implements Runnable {
         s.setLastError(null);
         s.setUrl(site.getUrl());
         s.setName(site.getName());
-
         return s;
     }
 
@@ -123,27 +104,6 @@ public class SiteParserHandler implements Runnable {
         this.parser = new SiteParser(site);
         this.parser.setStop(false);
         return new ForkJoinPool().invoke(parser);
-    }
-
-    private void saveOrUpdateSite(Site s) {
-        if (isSiteExists(s)) {
-            siteDao.update(s);
-        } else {
-            siteDao.save(s);
-        }
-    }
-
-    private boolean isSiteExists(Site s) {
-        Optional<Site> opt = siteDao.get(s);
-
-        if (opt.isEmpty()) {
-            return false;
-        }
-
-        s.setId(opt.get().getId());
-        s.setLastError(opt.get().getLastError());
-        s.setPages(opt.get().getPages());
-        return true;
     }
 
     private void executorShutdown(ExecutorService executor) {
@@ -155,5 +115,34 @@ public class SiteParserHandler implements Runnable {
         } catch (InterruptedException e) {
             executor.shutdownNow();
         }
+    }
+
+    private void saveAndClearCurrentSiteLemmas(Map<String, Lemma> lemmasMap, searchengine.model.Site site) {
+        Set<Lemma> lemmasSet = new HashSet<>();
+        for (Lemma lemma : lemmasMap.values()) {
+            if (lemma.getSite().getId() == site.getId()) {
+                lemmasSet.add(lemma);
+            }
+        }
+
+        lemmaDao.saveOrUpdateBatch(lemmasSet);
+
+        for (Map.Entry<String, Lemma> entry : PageIndexer.getLemmas().entrySet()) {
+            if (lemmasSet.contains(entry.getValue())) {
+                PageIndexer.getLemmas().remove(entry.getKey());
+            }
+        }
+    }
+
+    private void saveAndClearCurrentSiteIndexes(Collection<Index> indexes, searchengine.model.Site site) {
+        Set<Index> indexesSet = new HashSet<>();
+        for (Index index : indexes) {
+            if (index.getPage().getSite().getId() == site.getId()) {
+                indexesSet.add(index);
+            }
+        }
+
+        indexDao.saveOrUpdateBatch(indexesSet);
+        indexes.removeAll(indexesSet);
     }
 }
