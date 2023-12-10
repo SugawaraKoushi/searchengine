@@ -38,7 +38,12 @@ indexing-settings:
     - url: %site_url%
       name: %site_name%
 ```
+В параметр `username` укажите пользователя БД, в `password` - его пароль, в `url` - адрес для подлюкчения к БД.
+
+В `dialect` укажите диалект для БД, которой вы будете использовать.
+
 Для первого запуска укажите `create` для параметра `ddl-auto`. Для последующего использования используйте `update`.
+
 2. Создайте в папке `./searchengine/src/main/resources/` файл `hibernate.cfg.xml` со следующим содержимым:
 ```xml
 <!DOCTYPE hibernate-configuration PUBLIC
@@ -70,6 +75,12 @@ indexing-settings:
     </session-factory>
 </hibernate-configuration>
 ```
+В параметр `connection.driver_class` укажите драйвер БД, которой будете использовать.
+
+В параметр `connection.username` укажите пользователя БД, в `connection.password` - его пароль, в `connection.url` - адрес для подлюкчения к БД.
+
+В `dialect` укажите диалект для БД, которой вы будете использовать.
+
 Для первого запуска укажите `create` для параметра `hbm2ddl.auto`. Для последующего использования используйте `update`.
 
 3. Перейдите по адресу http://localhots:8080/.
