@@ -12,6 +12,8 @@
 - Spring.
 
 # Инструкция для запуска
+1. Установител [JDK 17](https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html).
+
 1. Создайте в корне проекта файл `Application.yaml` со следующим содержимым:
 ```yaml
 server:
