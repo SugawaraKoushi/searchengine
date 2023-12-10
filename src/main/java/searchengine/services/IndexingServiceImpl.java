@@ -122,11 +122,14 @@ public class IndexingServiceImpl implements IndexingService {
                 String root = matcher.group("root");
                 String path = matcher.group("path");
 
+
                 searchengine.model.Site s = new searchengine.model.Site();
+                s.setUrl(root);
+                s = siteDao.get(s).orElse(new searchengine.model.Site());
                 s.setName(site.getName());
+                s.setUrl(root);
                 s.setStatus(Status.INDEXING);
                 s.setStatusTime(new Date());
-                s.setUrl(root);
 
                 Page p = new Page();
                 p.setPath(path);
@@ -134,6 +137,9 @@ public class IndexingServiceImpl implements IndexingService {
 
                 PageIndexer indexer = new PageIndexer(s, p);
                 indexer.index();
+
+                saveAndClearCurrentSiteLemmas(PageIndexer.getLemmas(), s);
+                saveAndClearCurrentSiteIndexes(PageIndexer.getIndexes(), s);
 
                 Response response = new Response();
                 response.setResult(true);
@@ -224,67 +230,6 @@ public class IndexingServiceImpl implements IndexingService {
         // Сортируем страницы по релевантности
         List<Map.Entry<Page, Float>> sortedByRelevance = new ArrayList<>(relevantPages.entrySet());
         sortedByRelevance.sort(Map.Entry.comparingByValue());
-
-//        searchengine.model.Site tempS = s;
-//        lemmasList = new ArrayList<>(lemmasList
-//                .stream()
-//                .filter(l -> l.getSite().equals(tempS) && lemmasMap.containsKey(l.getLemma()))
-//                .toList());
-//
-//        lemmasList.sort(Lemma::compareTo);
-//
-//        List<Page> pagesList = new ArrayList<>();
-//        List<Index> indexList;
-//
-//        for (int i = 0; i < lemmasList.size(); i++) {
-//
-//            if (i == 0) {
-//                indexList = indexDao.getListByLemma(lemmasList.get(i)).orElse(null);
-//                // Не найдено индексов с искомыми леммами
-//                if (indexList == null || indexList.isEmpty()) {
-//                    FailureResponse response = new FailureResponse();
-//                    response.setResult(false);
-//                    response.setError(errors[1]);
-//                    return response;
-//                }
-//
-//                pagesList = pageDao.getListByIndexes(indexList).orElse(null);
-//            } else {
-//                List<Index> temp = indexDao.getListByLemma(lemmasList.get(i)).orElse(new ArrayList<>());
-//                pagesList.removeIf(page -> temp.stream().noneMatch(e -> e.getPage().getId() == page.getId()));
-//            }
-//        }
-//
-//        if (pagesList == null || pagesList.isEmpty()) {
-//            FailureResponse response = new FailureResponse();
-//            response.setResult(false);
-//            response.setError(errors[1]);
-//            return response;
-//        }
-//
-//        HashMap<Page, Float> foundPages = new HashMap<>();
-//        float maxRelevance = 0.0f;
-//        for (Page page : pagesList) {
-//            for (Lemma lemma : lemmasList) {
-//                Index index = indexDao.getListByPageAndLemma(page, lemma).orElse(null);
-//                float rank = index.getRank();
-//
-//                if (!foundPages.containsKey(page)) {
-//                    foundPages.put(page, rank);
-//                } else {
-//                    float relevance = foundPages.get(page) + rank;
-//                    maxRelevance = Math.max(maxRelevance, relevance);
-//                    foundPages.put(page, relevance);
-//                }
-//            }
-//        }
-//
-//        for (Map.Entry<Page, Float> entry : foundPages.entrySet()) {
-//            foundPages.put(entry.getKey(), entry.getValue() / maxRelevance);
-//        }
-//
-//        List<Map.Entry<Page, Float>> sortedByRelevance = new ArrayList<>(foundPages.entrySet());
-//        sortedByRelevance.sort(Map.Entry.comparingByValue());
 
         SearchSuccessResponse response = new SearchSuccessResponse();
         response.setResult(true);
@@ -426,5 +371,34 @@ public class IndexingServiceImpl implements IndexingService {
         result.add(wordWithFirstCharUpperCase);
         result.add(word.toLowerCase());
         return result;
+    }
+
+    private void saveAndClearCurrentSiteLemmas(Map<String, Lemma> lemmasMap, searchengine.model.Site site) {
+        Set<Lemma> lemmasSet = new HashSet<>();
+        for (Lemma lemma : lemmasMap.values()) {
+            if (lemma.getSite().getId() == site.getId()) {
+                lemmasSet.add(lemma);
+            }
+        }
+
+        lemmaDao.saveOrUpdateBatch(lemmasSet);
+
+        for (Map.Entry<String, Lemma> entry : PageIndexer.getLemmas().entrySet()) {
+            if (lemmasSet.contains(entry.getValue())) {
+                PageIndexer.getLemmas().remove(entry.getKey());
+            }
+        }
+    }
+
+    private void saveAndClearCurrentSiteIndexes(Collection<Index> indexes, searchengine.model.Site site) {
+        List<Index> indexesSet = new ArrayList<>();
+        for (Index index : indexes) {
+            if (index.getPage().getSite().getId() == site.getId()) {
+                indexesSet.add(index);
+            }
+        }
+
+        indexDao.saveOrUpdateBatch(indexesSet);
+        indexes.removeAll(indexesSet);
     }
 }

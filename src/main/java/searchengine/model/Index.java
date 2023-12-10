@@ -4,7 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import jakarta.persistence.*;
-import org.springframework.boot.context.properties.bind.DefaultValue;
+import org.hibernate.proxy.HibernateProxy;
 
 import java.io.Serializable;
 
@@ -30,22 +30,26 @@ public class Index implements Serializable {
     private float rank;
 
     @Override
-    public int hashCode() {
-        int result = id;
-        result += result * 31 + Math.round(rank);
-        return result;
+    public final boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null) return false;
+        Class<?> oEffectiveClass = o instanceof HibernateProxy
+                ? ((HibernateProxy) o).getHibernateLazyInitializer().getPersistentClass()
+                : o.getClass();
+        Class<?> thisEffectiveClass = this instanceof HibernateProxy
+                ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass()
+                : this.getClass();
+        if (thisEffectiveClass != oEffectiveClass) return false;
+        Index index = (Index) o;
+        return getId() == index.getId();
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-
-        if (obj instanceof Index i) {
-            return this.page.getId() == i.page.getId();
-        }
-
-        return false;
+    public final int hashCode() {
+        int result = id;
+        result += page.hashCode();
+        result += lemma.hashCode();
+        result += (int) rank;
+        return result;
     }
 }

@@ -87,7 +87,6 @@ public class PageIndexer implements Callable<Integer> {
             lemmas.compute(entry.getKey(), (k, v) -> lemma);
             index = createIndex(lemma, entry.getValue());
             indexes.add(index);
-
         }
     }
 

@@ -15,7 +15,7 @@ spring:
         batch_versioned_data: true
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
 
 indexing-settings:
   sites:
