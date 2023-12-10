@@ -38,7 +38,7 @@ indexing-settings:
     - url: %site_url%
       name: %site_name%
 ```
-В параметр `username` укажите пользователя БД, в `password` - его пароль, в `url` - адрес для подлюкчения к БД.
+В параметр `username` укажите пользователя БД, в `password` - его пароль, в `url` - адрес для подключения к БД.
 
 В `dialect` укажите диалект для БД, которой вы будете использовать.
 
@@ -77,7 +77,7 @@ indexing-settings:
 ```
 В параметр `connection.driver_class` укажите драйвер БД, которой будете использовать.
 
-В параметр `connection.username` укажите пользователя БД, в `connection.password` - его пароль, в `connection.url` - адрес для подлюкчения к БД.
+В параметр `connection.username` укажите пользователя БД, в `connection.password` - его пароль, в `connection.url` - адрес для подключения к БД.
 
 В `dialect` укажите диалект для БД, которой вы будете использовать.
 
