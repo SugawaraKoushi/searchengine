@@ -26,6 +26,11 @@ public class LemmaFinder {
         }
     }
 
+    /**
+     * Находит леммы в тексте и их количество повторений
+     * @param text текст
+     * @return коллекция пар "лемма - кол-во повторений"
+     */
     public synchronized HashMap<String, Integer> getLemmas(String text) {
         HashMap<String, Integer> lemmasMap = new HashMap<>();
         String[] englishWords = getEnglishWordsArray(text);
@@ -88,6 +93,10 @@ public class LemmaFinder {
         return wordBaseForms.stream().anyMatch(this::hasParticleProperty);
     }
 
+    /**
+     * Возвращает singleton экземпляр класса LemmaFinder
+     * @return экземпляр класса LemmaFinder
+     */
     public static LemmaFinder getInstance() {
         LemmaFinder localInstance = instance;
         if (localInstance == null) {

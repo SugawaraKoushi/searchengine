@@ -14,7 +14,6 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CopyOnWriteArraySet;
 
 @RequiredArgsConstructor
 public class PageIndexer implements Callable<Integer> {
@@ -30,7 +29,6 @@ public class PageIndexer implements Callable<Integer> {
 
     private Site site;
     private Page page;
-    private final Logger logger = LoggerFactory.getLogger(SiteParser.class);
 
     private static final LemmaFinder lemmaFinder = LemmaFinder.getInstance();
 
@@ -39,16 +37,11 @@ public class PageIndexer implements Callable<Integer> {
         this.page = page;
     }
 
+    /**
+     * Полная индексация страницы
+     */
     public void index() {
-        Site s = getSite();
-        if (s == null) {
-            saveSite();
-        } else {
-            site = s;
-            if (page.getSite() == null) {
-                page.setSite(site);
-            }
-        }
+        getOrCreateSite();
 
         if (page.getCode() == 0) {
             Page p = getPage();
@@ -59,7 +52,7 @@ public class PageIndexer implements Callable<Integer> {
                 deletePage();
             }
 
-            parsePage();
+            SiteParser.parsePage(page);
             pageDao.saveOrUpdate(page);
 
             if (page.getCode() >= 400) {
@@ -71,22 +64,17 @@ public class PageIndexer implements Callable<Integer> {
 
         String text = getTextFromPage(page.getContent());
         HashMap<String, Integer> lemmasMap = lemmaFinder.getLemmas(text);
+        collectLemmasAndIndexes(lemmasMap);
+    }
 
-        for (Map.Entry<String, Integer> entry : lemmasMap.entrySet()) {
-            Index index;
-            Lemma lemma;
-
-            if (lemmas.containsKey(entry.getKey())) {
-                lemma = lemmas.get(entry.getKey());
-                int freq = lemma.getFrequency() + entry.getValue();
-                lemma.setFrequency(freq);
-            } else {
-                lemma = createLemma(entry.getKey(), entry.getValue());
-            }
-
-            lemmas.compute(entry.getKey(), (k, v) -> lemma);
-            index = createIndex(lemma, entry.getValue());
-            indexes.add(index);
+    @Override
+    public Integer call() {
+        try {
+            index();
+            return 1;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
         }
     }
 
@@ -124,10 +112,6 @@ public class PageIndexer implements Callable<Integer> {
         return Jsoup.parse(content).text();
     }
 
-    private Site getSite() {
-        return siteDao.get(site).orElse(null);
-    }
-
     private Page getPage() {
         return pageDao.get(page).orElse(null);
     }
@@ -139,12 +123,17 @@ public class PageIndexer implements Callable<Integer> {
         return lemmaDao.get(l).orElse(null);
     }
 
-    private void saveSite() {
-        if (site.getName() == null) {
+    private void getOrCreateSite() {
+        Site s = siteDao.get(site).orElse(null);
+        if (s == null) {
             site.setName(site.getUrl());
+            siteDao.save(site);
+        } else {
+            site = s;
+            if (page.getSite() == null) {
+                page.setSite(site);
+            }
         }
-
-        siteDao.save(site);
     }
 
     private Lemma createLemma(String lemma, int frequency) {
@@ -215,14 +204,22 @@ public class PageIndexer implements Callable<Integer> {
         pageDao.delete(page);
     }
 
-    @Override
-    public Integer call() {
-        try {
-            index();
-            return 1;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return 0;
+    private void collectLemmasAndIndexes(HashMap<String, Integer> lemmasMap) {
+        for (Map.Entry<String, Integer> entry : lemmasMap.entrySet()) {
+            Index index;
+            Lemma lemma;
+
+            if (lemmas.containsKey(entry.getKey())) {
+                lemma = lemmas.get(entry.getKey());
+                int freq = lemma.getFrequency() + entry.getValue();
+                lemma.setFrequency(freq);
+            } else {
+                lemma = createLemma(entry.getKey(), entry.getValue());
+            }
+
+            lemmas.compute(entry.getKey(), (k, v) -> lemma);
+            index = createIndex(lemma, entry.getValue());
+            indexes.add(index);
         }
     }
 }

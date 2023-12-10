@@ -41,16 +41,13 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
     protected HashSet<Page> compute() {
         HashSet<Page> result = new HashSet<>();         // Все страницы с сайта
         List<SiteParser> tasks = new ArrayList<>();     // Таски
-        //logger.info("Start parsing: " + getRoot(site.getUrl()) + page.getPath());
-        HashSet<Page> pages = handle(page);             // Страницы из текущей
-
         page.setSite(site);
+        HashSet<Page> pages = handle(page);             // Страницы из текущей
         updateSiteStatusTime();
 
         if (pages == null)
             return null;
 
-        // Создаем таски
         for (Page p : pages) {
             SiteParser task = new SiteParser(site, p.getPath());
             task.fork();
@@ -66,11 +63,31 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
             if (taskResult != null) {
                 result.addAll(taskResult);
             }
-
         }
 
-        //logger.info("End parsing: " + getRoot(site.getUrl()) + page.getPath());
         return result;
+    }
+
+    public static void parsePage(Page page) {
+        try {
+            Connection.Response response = Jsoup.connect(getRoot(page.getSite().getUrl()) + page.getPath())
+                    .userAgent("BobTheSearcherBot")
+                    .referrer("http://www.google.com")
+                    .timeout(60000)
+                    .execute();
+            TimeUnit.MILLISECONDS.sleep(500);
+
+            Document doc = response.parse();
+            String content = doc.toString();
+            content = content.replaceAll("'", "\\\\'");
+            content = content.replaceAll("\"", "\\\\\"");
+
+            page.setContent(content);
+            page.setCode(response.statusCode());
+        } catch (Exception e) {
+            page.setCode(getErrorResponseCode(e.getMessage()));
+            page.getSite().setLastError(e.getMessage());
+        }
     }
 
     private HashSet<Page> handle(Page page) {
@@ -82,54 +99,70 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
         }
 
         HashSet<Page> result = new HashSet<>();
+        parsePage(page);
+        Document doc = Jsoup.parse(page.getContent());
 
-        try {
-            Connection.Response response = Jsoup.connect(getRoot(site.getUrl()) + page.getPath())
-                    .userAgent("BobTheSearcherBot")
-                    .referrer("http://www.google.com")
-                    .timeout(60000)
-                    .execute();
+        Elements elements = doc.select("a");
+        HashSet<String> hrefs = new HashSet<>();
+        elements.forEach(element -> hrefs.add(element.attr("href")));
+        hrefs.removeIf(href -> !this.isValidPath(href, page));
 
-            TimeUnit.MILLISECONDS.sleep(500);
-
-            Document doc = response.parse();
-
-            // Код ответа
-            page.setCode(response.statusCode());
-
-            // Код страницы
-            String content = doc.toString();
-            content = content.replaceAll("'", "\\\\'");
-            content = content.replaceAll("\"", "\\\\\"");
-            page.setContent(content);
-
-            // Получаем ссылки со страницы, удаляя ненужное
-            Elements elements = doc.select("a");
-            HashSet<String> hrefs = new HashSet<>();
-            elements.forEach(element -> hrefs.add(element.attr("href")));
-            hrefs.removeIf(href -> !this.isValidPath(href));
-
-            // Создаем объекты с нужными path
-            for (String href : hrefs) {
-                Page p = new Page();
-                p.setPath(href);
-                result.add(p);
-            }
-
-        } catch (Exception e) {
-            page.setCode(getErrorResponseCode(e.getMessage()));
-            site.setLastError(e.getMessage());
-            return null;
+        for (String href : hrefs) {
+            Page p = new Page();
+            p.setPath(href);
+            result.add(p);
         }
 
         return result;
+//        try {
+//            Connection.Response response = Jsoup.connect(getRoot(site.getUrl()) + page.getPath())
+//                    .userAgent("BobTheSearcherBot")
+//                    .referrer("http://www.google.com")
+//                    .timeout(60000)
+//                    .execute();
+//
+//            TimeUnit.MILLISECONDS.sleep(500);
+//
+//            Document doc = response.parse();
+//
+//            // Код ответа
+//            page.setCode(response.statusCode());
+//
+//            // Код страницы
+//            String content = doc.toString();
+//            content = content.replaceAll("'", "\\\\'");
+//            content = content.replaceAll("\"", "\\\\\"");
+//            page.setContent(content);
+//
+//            // Получаем ссылки со страницы, удаляя ненужное
+//            Elements elements = doc.select("a");
+//            HashSet<String> hrefs = new HashSet<>();
+//            elements.forEach(element -> hrefs.add(element.attr("href")));
+//            hrefs.removeIf(href -> !this.isValidPath(href));
+//
+//            // Создаем объекты с нужными path
+//            for (String href : hrefs) {
+//                Page p = new Page();
+//                p.setPath(href);
+//                result.add(p);
+//            }
+//
+//        } catch (Exception e) {
+//            page.setCode(getErrorResponseCode(e.getMessage()));
+//            site.setLastError(e.getMessage());
+//            return null;
+//        }
     }
 
-    private boolean isValidPath(String path) {
+    public void setStop(boolean value) {
+        stop = value;
+    }
+
+    private boolean isValidPath(String path, Page page) {
         return !path.equals(page.getPath()) && path.startsWith(page.getPath()) && !path.contains("#");
     }
 
-    private int getErrorResponseCode(String httpErrorMessage) {
+    private static int getErrorResponseCode(String httpErrorMessage) {
         if (!httpErrorMessage.toLowerCase().contains("status")) {
             return 408;
         }
@@ -154,15 +187,7 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
         siteDao.update(site);
     }
 
-    public void stop() {
-        stop = true;
-    }
-
-    public void setStop(boolean value) {
-        stop = value;
-    }
-
-    private String getRoot(String url) {
+    private static String getRoot(String url) {
         Pattern urlPattern = Pattern.compile("(?<root>https?://[^/]+)(?<path>.+)?");
         Matcher matcher = urlPattern.matcher(url);
 

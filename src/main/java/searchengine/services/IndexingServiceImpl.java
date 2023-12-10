@@ -172,7 +172,6 @@ public class IndexingServiceImpl implements IndexingService {
                 "Задан пустой поисковый запрос"
         };
 
-        // Пустой поисковый запрос
         if (query.isBlank()) {
             return createFailureResponse(errors[2]);
         }
@@ -188,25 +187,22 @@ public class IndexingServiceImpl implements IndexingService {
         }
 
         sites.removeIf(Objects::isNull);
-        // Ни один из сайтов не проиндексирован
+
         if (sites.isEmpty()) {
             return createFailureResponse(errors[0]);
         }
 
-        // Формируем леммы из поискового запроса
         HashMap<String, Integer> lemmasMap = lemmaFinder.getLemmas(query);
         List<String> words = new ArrayList<>();
         lemmasMap.forEach((k, v) -> words.add(k));
         List<Lemma> lemmasList = lemmaDao.getListByLemma(words.toArray()).orElse(null);
 
-        // Нет страниц с такими леммами
         if (lemmasList == null || lemmasList.isEmpty()) {
             return createFailureResponse(errors[1]);
         }
 
         HashMap<Page, Float> relevantPages = new HashMap<>();
         for (searchengine.model.Site s : sites) {
-            // Находим леммы текущего сайта
             List<Lemma> lemmas = new ArrayList<>(lemmasList
                     .stream()
                     .filter(l -> l.getSite().equals(s) && lemmasMap.containsKey(l.getLemma()))
@@ -217,9 +213,7 @@ public class IndexingServiceImpl implements IndexingService {
             }
 
             lemmas.sort(Lemma::compareTo);
-            // Находим страницы текущего сайта, в которых присутствуют все леммы
-             List<Page> pages = getPagesContainingAllLemmas(lemmas);
-            // Находим относительную релевантность для каждой из найденной страницы
+            List<Page> pages = getPagesContainingAllLemmas(lemmas);
             relevantPages.putAll(getRelevantPages(pages, lemmas));
         }
 
@@ -227,7 +221,6 @@ public class IndexingServiceImpl implements IndexingService {
             return createFailureResponse(errors[1]);
         }
 
-        // Сортируем страницы по релевантности
         List<Map.Entry<Page, Float>> sortedByRelevance = new ArrayList<>(relevantPages.entrySet());
         sortedByRelevance.sort(Map.Entry.comparingByValue());
 
@@ -241,6 +234,7 @@ public class IndexingServiceImpl implements IndexingService {
 
     /**
      * Устанавливает значение флага запуска
+     *
      * @param value значение флага
      */
     public static void setIsStarted(boolean value) {

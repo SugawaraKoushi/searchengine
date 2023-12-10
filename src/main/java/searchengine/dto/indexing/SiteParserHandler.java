@@ -45,23 +45,7 @@ public class SiteParserHandler implements Runnable {
         HashSet<Page> pages = getPagesFromSite(s);
 
         if (pages != null) {
-            pages.removeIf(page -> page.getContent() == null);
-            s.setPages(pages);
-
-            ExecutorService executor = Executors.newFixedThreadPool(2);
-            List<PageIndexer> pageIndexers = new ArrayList<>();
-
-            for (Page page : pages) {
-                pageIndexers.add(new PageIndexer(s, page));
-            }
-
-            try {
-                List<Future<Integer>> futures = executor.invokeAll(pageIndexers);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-
-            executorShutdown(executor);
+            indexPages(pages, s);
             saveAndClearCurrentSiteLemmas(PageIndexer.getLemmas(), s);
             saveAndClearCurrentSiteIndexes(PageIndexer.getIndexes(), s);
         }
@@ -81,7 +65,7 @@ public class SiteParserHandler implements Runnable {
      */
     public void stopParsing() {
         stop = true;
-        parser.stop();
+        parser.setStop(true);
     }
 
     /**
@@ -115,6 +99,26 @@ public class SiteParserHandler implements Runnable {
         } catch (InterruptedException e) {
             executor.shutdownNow();
         }
+    }
+
+    private void indexPages(HashSet<Page> pages, Site site) {
+        pages.removeIf(page -> page.getContent() == null);
+        site.setPages(pages);
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        List<PageIndexer> pageIndexers = new ArrayList<>();
+
+        for (Page page : pages) {
+            pageIndexers.add(new PageIndexer(site, page));
+        }
+
+        try {
+            List<Future<Integer>> futures = executor.invokeAll(pageIndexers);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        executorShutdown(executor);
     }
 
     private void saveAndClearCurrentSiteLemmas(Map<String, Lemma> lemmasMap, searchengine.model.Site site) {
