@@ -2,9 +2,7 @@ package searchengine.dto.indexing;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import org.jsoup.Connection;
 import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import searchengine.dao.*;
@@ -83,38 +81,8 @@ public class PageIndexer implements Callable<Integer> {
             index();
             return 1;
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage());
             return 0;
-        }
-    }
-
-    private void parsePage() {
-        int code = 400;
-        Connection.Response response = null;
-
-        try {
-            response = Jsoup.connect(site.getUrl() + page.getPath())
-                    .userAgent("BobTheSearcherBot")
-                    .referrer("http://www.google.com")
-                    .timeout(60000)
-                    .execute();
-            Document doc = response.parse();
-
-            code = response.statusCode();
-            String content = doc.toString();
-            content = content.replaceAll("'", "\\\\'");
-            content = content.replaceAll("\"", "\\\\\"");
-            page.setContent(content);
-
-        } catch (Exception e) {
-            if (response != null) {
-                code = response.statusCode();
-            }
-
-            updateSite(e.getMessage(), Status.FAILED);
-        } finally {
-            page.setCode(code);
-            updateSite(null, Status.INDEXED);
         }
     }
 
@@ -124,13 +92,6 @@ public class PageIndexer implements Callable<Integer> {
 
     private Page getPage() {
         return pageDao.get(page).orElse(null);
-    }
-
-    private Lemma getLemma(String lemma) {
-        Lemma l = new Lemma();
-        l.setLemma(lemma);
-
-        return lemmaDao.get(l).orElse(null);
     }
 
     private void getOrCreateSite() {
@@ -152,13 +113,6 @@ public class PageIndexer implements Callable<Integer> {
         l.setFrequency(frequency);
         l.setLemma(lemma);
         return l;
-    }
-
-    private void updateSite(String error, Status status) {
-        site.setLastError(error);
-        site.setStatus(status);
-        site.setStatusTime(new Date());
-        siteDao.update(site);
     }
 
     private Index createIndex(Lemma lemma, float rank) {
