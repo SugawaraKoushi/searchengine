@@ -12,7 +12,7 @@
 - Spring.
 
 # Инструкция для запуска
-1. Установител [JDK 17](https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html).
+1. Установите [JDK 17](https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html).
 
 1. Создайте в корне проекта файл `application.yaml` со следующим содержимым:
 ```yaml
@@ -81,7 +81,7 @@ indexing-settings:
 
 В параметр `connection.username` укажите пользователя БД, в `connection.password` - его пароль, в `connection.url` - адрес для подключения к БД.
 
-В `dialect` укажите диалект для БД, которой вы будете использовать.
+В `dialect` укажите диалект для БД, которую Вы будете использовать.
 
 Для первого запуска укажите `create` для параметра `hbm2ddl.auto`. Для последующего использования используйте `update`.
 
