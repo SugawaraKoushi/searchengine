@@ -2,6 +2,7 @@ package searchengine.dto.indexing;
 
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
+import org.jsoup.internal.StringUtil;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
@@ -78,9 +79,9 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
             TimeUnit.MILLISECONDS.sleep(500);
 
             Document doc = response.parse();
-            String content = doc.toString();
-            content = content.replaceAll("'", "\\\\'");
-            content = content.replaceAll("\"", "\\\\\"");
+            String content = doc.html();
+//            content = content.replaceAll("'", "\\\\'");
+//            content = content.replaceAll("\"", "\\\\\"");
 
             page.setContent(content);
             page.setCode(response.statusCode());
@@ -100,8 +101,12 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
 
         HashSet<Page> result = new HashSet<>();
         parsePage(page);
-        Document doc = Jsoup.parse(page.getContent());
 
+        if (StringUtil.isBlank(page.getContent())) {
+            return null;
+        }
+
+        Document doc = Jsoup.parse(page.getContent());
         Elements elements = doc.select("a");
         HashSet<String> hrefs = new HashSet<>();
         elements.forEach(element -> hrefs.add(element.attr("href")));

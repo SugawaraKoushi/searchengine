@@ -21,16 +21,14 @@ public class PageIndexer implements Callable<Integer> {
     private final IndexDao indexDao = new IndexDao();
     private final PageDao pageDao = new PageDao();
     private final SiteDao siteDao = new SiteDao();
-
     @Getter
     private static ConcurrentHashMap<String, Lemma> lemmas = new ConcurrentHashMap<>();
     @Getter
     private static CopyOnWriteArrayList<Index> indexes = new CopyOnWriteArrayList<>();
-
     private Site site;
     private Page page;
-
     private static final LemmaFinder lemmaFinder = LemmaFinder.getInstance();
+    private final Logger logger = LoggerFactory.getLogger(PageIndexer.class);
 
     public PageIndexer(Site site, Page page) {
         this.site = site;
@@ -41,6 +39,8 @@ public class PageIndexer implements Callable<Integer> {
      * Полная индексация страницы
      */
     public void index() {
+        logger.info("Start single page parsing: " + site.getUrl() + page.getPath());
+        long start = System.currentTimeMillis();
         getOrCreateSite();
 
         if (page.getCode() == 0) {
@@ -52,8 +52,13 @@ public class PageIndexer implements Callable<Integer> {
                 deletePage();
             }
 
-            SiteParser.parsePage(page);
-            pageDao.saveOrUpdate(page);
+            p = new Page();
+            p.setSite(site);
+            p.setPath(page.getPath());
+
+            SiteParser.parsePage(p);
+            pageDao.saveOrUpdate(p);
+            page = p;
 
             if (page.getCode() >= 400) {
                 return;
@@ -65,6 +70,11 @@ public class PageIndexer implements Callable<Integer> {
         String text = getTextFromPage(page.getContent());
         HashMap<String, Integer> lemmasMap = lemmaFinder.getLemmas(text);
         collectLemmasAndIndexes(lemmasMap);
+
+        site.setStatus(Status.INDEXED);
+        siteDao.saveOrUpdate(site);
+        logger.info("End single page parsing: " + site.getUrl() + page.getPath());
+        logger.info("Single page parsing " + site.getUrl() + page.getPath() + " tooks " + (System.currentTimeMillis() - start) + " ms");
     }
 
     @Override
@@ -148,7 +158,6 @@ public class PageIndexer implements Callable<Integer> {
         site.setLastError(error);
         site.setStatus(status);
         site.setStatusTime(new Date());
-
         siteDao.update(site);
     }
 

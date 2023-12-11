@@ -4,6 +4,8 @@ target/
 ./application.yaml
 !**/src/main/**/target/
 !**/src/test/**/target/
+application.yaml
+src/main/resources/hibernate.cfg.xml
 
 ### STS ###
 .apt_generated

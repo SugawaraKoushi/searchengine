@@ -139,14 +139,14 @@ public class SiteParserHandler implements Runnable {
     }
 
     private void saveAndClearCurrentSiteIndexes(Collection<Index> indexes, searchengine.model.Site site) {
-        Set<Index> indexesSet = new HashSet<>();
+        List<Index> indexesList = new ArrayList<>();
         for (Index index : indexes) {
             if (index.getPage().getSite().getId() == site.getId()) {
-                indexesSet.add(index);
+                indexesList.add(index);
             }
         }
 
-        indexDao.saveOrUpdateBatch(indexesSet);
-        indexes.removeAll(indexesSet);
+        indexDao.saveOrUpdateBatch(indexesList);
+        indexes.removeAll(indexesList);
     }
 }

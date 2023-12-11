@@ -32,9 +32,10 @@ public class PageDao implements Dao<Page> {
         Page p;
 
         try {
-            String query = "from " + Page.class.getSimpleName() + " where path = '" + page.getPath() +
-                    "' and site_id = " + page.getSite().getId();
-            p = session.createQuery(query, Page.class).getSingleResult();
+            Query<Page> query = session.createQuery("from Page where path = :path and site = :site", Page.class);
+            query.setParameter("path", page.getPath());
+            query.setParameter("site", page.getSite());
+            p = query.getSingleResult();
         } catch (Exception e) {
             p = null;
         } finally {
@@ -129,7 +130,6 @@ public class PageDao implements Dao<Page> {
     public void update(Page page) {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
-
         session.merge(page);
         transaction.commit();
         session.close();
@@ -139,7 +139,6 @@ public class PageDao implements Dao<Page> {
     public void delete(Page page) {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
-
         session.remove(page);
         transaction.commit();
         session.close();
