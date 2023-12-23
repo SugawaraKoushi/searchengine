@@ -1,4 +1,4 @@
-package searchengine.dto.indexing;
+package searchengine.businessLogic;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -45,7 +45,7 @@ public class PageIndexer implements Callable<Integer> {
             Page p = getPage();
             if (p != null) {
                 page = p;
-                deleteLemmas();
+                deleteOrDecreaseLemma();
                 deleteIndexes();
                 deletePage();
             }
@@ -123,7 +123,7 @@ public class PageIndexer implements Callable<Integer> {
         return index;
     }
 
-    private void deleteLemmas() {
+    private void deleteOrDecreaseLemma() {
         Optional<List<Index>> opt1 = indexDao.getListByPage(page);
         List<Index> indexes = opt1.orElse(new ArrayList<>());
 

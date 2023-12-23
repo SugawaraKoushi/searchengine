@@ -1,4 +1,4 @@
-package searchengine.dto.indexing;
+package searchengine.businessLogic;
 
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;

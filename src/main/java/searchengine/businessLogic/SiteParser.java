@@ -1,4 +1,4 @@
-package searchengine.dto.indexing;
+package searchengine.businessLogic;
 
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
@@ -38,12 +38,15 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
         this(site, "/");
     }
 
+    /**
+     * Возвращает все содержащиеся страницы на текущей странице
+     */
     @Override
     protected HashSet<Page> compute() {
-        HashSet<Page> result = new HashSet<>();         // Все страницы с сайта
-        List<SiteParser> tasks = new ArrayList<>();     // Таски
+        HashSet<Page> result = new HashSet<>();
+        List<SiteParser> tasks = new ArrayList<>();
         page.setSite(site);
-        HashSet<Page> pages = handle(page);             // Страницы из текущей
+        HashSet<Page> pages = handle(page);
         updateSiteStatusTime();
 
         if (pages == null)
@@ -69,6 +72,10 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
         return result;
     }
 
+    /**
+     * Парсинг страницы
+     * @param page
+     */
     public static void parsePage(Page page) {
         try {
             Connection.Response response = Jsoup.connect(getRoot(page.getSite().getUrl()) + page.getPath())
@@ -80,8 +87,6 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
 
             Document doc = response.parse();
             String content = doc.html();
-//            content = content.replaceAll("'", "\\\\'");
-//            content = content.replaceAll("\"", "\\\\\"");
 
             page.setContent(content);
             page.setCode(response.statusCode());
@@ -93,9 +98,7 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
 
     private HashSet<Page> handle(Page page) {
         if (stop) {
-            logger.info("User stop the parsing");
-            updateSiteLastError("Индексация остановлена пользователем");
-            updateSiteStatus(Status.FAILED);
+            stop();
             return null;
         }
 
@@ -106,12 +109,7 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
             return null;
         }
 
-        Document doc = Jsoup.parse(page.getContent());
-        Elements elements = doc.select("a");
-        HashSet<String> hrefs = new HashSet<>();
-        elements.forEach(element -> hrefs.add(element.attr("href")));
-        hrefs.removeIf(href -> !this.isValidPath(href, page));
-
+        HashSet<String> hrefs = getValidHrefs(page);
         for (String href : hrefs) {
             Page p = new Page();
             p.setPath(href);
@@ -119,44 +117,6 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
         }
 
         return result;
-//        try {
-//            Connection.Response response = Jsoup.connect(getRoot(site.getUrl()) + page.getPath())
-//                    .userAgent("BobTheSearcherBot")
-//                    .referrer("http://www.google.com")
-//                    .timeout(60000)
-//                    .execute();
-//
-//            TimeUnit.MILLISECONDS.sleep(500);
-//
-//            Document doc = response.parse();
-//
-//            // Код ответа
-//            page.setCode(response.statusCode());
-//
-//            // Код страницы
-//            String content = doc.toString();
-//            content = content.replaceAll("'", "\\\\'");
-//            content = content.replaceAll("\"", "\\\\\"");
-//            page.setContent(content);
-//
-//            // Получаем ссылки со страницы, удаляя ненужное
-//            Elements elements = doc.select("a");
-//            HashSet<String> hrefs = new HashSet<>();
-//            elements.forEach(element -> hrefs.add(element.attr("href")));
-//            hrefs.removeIf(href -> !this.isValidPath(href));
-//
-//            // Создаем объекты с нужными path
-//            for (String href : hrefs) {
-//                Page p = new Page();
-//                p.setPath(href);
-//                result.add(p);
-//            }
-//
-//        } catch (Exception e) {
-//            page.setCode(getErrorResponseCode(e.getMessage()));
-//            site.setLastError(e.getMessage());
-//            return null;
-//        }
     }
 
     public void setStop(boolean value) {
@@ -201,5 +161,20 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
         }
 
         return url;
+    }
+
+    private void stop() {
+        logger.info("User stop the parsing");
+        updateSiteLastError("Индексация остановлена пользователем");
+        updateSiteStatus(Status.FAILED);
+    }
+
+    private HashSet<String> getValidHrefs(Page page) {
+        Document doc = Jsoup.parse(page.getContent());
+        Elements elements = doc.select("a");
+        HashSet<String> hrefs = new HashSet<>();
+        elements.forEach(element -> hrefs.add(element.attr("href")));
+        hrefs.removeIf(href -> !this.isValidPath(href, page));
+        return hrefs;
     }
 }

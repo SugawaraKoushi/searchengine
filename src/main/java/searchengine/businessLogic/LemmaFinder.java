@@ -1,4 +1,4 @@
-package searchengine.dto.indexing;
+package searchengine.businessLogic;
 
 import org.apache.lucene.morphology.LuceneMorphology;
 import org.apache.lucene.morphology.english.EnglishLuceneMorphology;
@@ -17,13 +17,21 @@ public class LemmaFinder {
             "МЕЖД", "СОЮЗ", "ПРЕДЛ", "ЧАСТ", "PART", "ARTICLE", "PREP", "CONJ", "INT"
     };
 
-    private LemmaFinder() {
-        try {
-            englishMorphology = new EnglishLuceneMorphology();
-            russianMorphology = new RussianLuceneMorphology();
-        } catch (IOException e) {
-            throw new RuntimeException();
+    /**
+     * Возвращает singleton экземпляр класса LemmaFinder
+     * @return экземпляр класса LemmaFinder
+     */
+    public static LemmaFinder getInstance() {
+        LemmaFinder localInstance = instance;
+        if (localInstance == null) {
+            synchronized (LemmaFinder.class) {
+                localInstance = instance;
+                if (localInstance == null) {
+                    instance = localInstance = new LemmaFinder();
+                }
+            }
         }
+        return localInstance;
     }
 
     /**
@@ -40,6 +48,15 @@ public class LemmaFinder {
         addLemmaToMap(lemmasMap, russianWords, russianMorphology);
 
         return lemmasMap;
+    }
+
+    private LemmaFinder() {
+        try {
+            englishMorphology = new EnglishLuceneMorphology();
+            russianMorphology = new RussianLuceneMorphology();
+        } catch (IOException e) {
+            throw new RuntimeException();
+        }
     }
 
     private synchronized void addLemmaToMap(Map<String, Integer> map, String[] words, LuceneMorphology morphology) {
@@ -85,28 +102,10 @@ public class LemmaFinder {
             if (wordBase.toUpperCase().contains(property))
                 return true;
         }
-
         return false;
     }
 
     private synchronized boolean anyWordBaseBelongsToParticle(List<String> wordBaseForms) {
         return wordBaseForms.stream().anyMatch(this::hasParticleProperty);
-    }
-
-    /**
-     * Возвращает singleton экземпляр класса LemmaFinder
-     * @return экземпляр класса LemmaFinder
-     */
-    public static LemmaFinder getInstance() {
-        LemmaFinder localInstance = instance;
-        if (localInstance == null) {
-            synchronized (LemmaFinder.class) {
-                localInstance = instance;
-                if (localInstance == null) {
-                    instance = localInstance = new LemmaFinder();
-                }
-            }
-        }
-        return localInstance;
     }
 }
