@@ -211,7 +211,7 @@ public class SearchServiceImpl implements SearchService {
         List<String> sentences = new ArrayList<>();
 
         for (String word : wordsVariations) {
-            Pattern pattern = Pattern.compile("\\s.{0,30}[^А-Яа-яA-Za-z]?(" + word + ")[^А-Яа-яA-Za-z]?.{0,30}\\s");
+            Pattern pattern = Pattern.compile("\\b.{0,50}(" + word + ").{0,50}\\b");
             Matcher matcher;
             boolean isFoundInSentences = false;
 
