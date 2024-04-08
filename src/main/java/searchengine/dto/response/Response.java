@@ -1,4 +1,4 @@
-package searchengine.dto.indexing.Response;
+package searchengine.dto.response;
 
 import lombok.Data;
 

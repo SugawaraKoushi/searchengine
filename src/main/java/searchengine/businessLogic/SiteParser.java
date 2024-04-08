@@ -47,7 +47,7 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
         List<SiteParser> tasks = new ArrayList<>();
         page.setSite(site);
         HashSet<Page> pages = handle(page);
-        updateSiteStatusTime();
+        updateSite(null, new Date(System.currentTimeMillis()), null);
 
         if (pages == null)
             return null;
@@ -73,8 +73,9 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
     }
 
     /**
-     * Парсинг страницы
-     * @param page
+     * Парсинг страницы сайта
+     *
+     * @param page - страница сайта
      */
     public static void parsePage(Page page) {
         try {
@@ -137,18 +138,19 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
         return Integer.parseInt(httpErrorMessage.substring(start, end));
     }
 
-    private void updateSiteStatusTime() {
-        site.setStatusTime(new Date(System.currentTimeMillis()));
-        siteDao.update(site);
-    }
+    private void updateSite(Status status, Date statusTime, String error) {
+        if (status != null) {
+            site.setStatus(status);
+        }
 
-    private void updateSiteStatus(Status status) {
-        site.setStatus(status);
-        siteDao.update(site);
-    }
+        if (statusTime != null) {
+            site.setStatusTime(statusTime);
+        }
 
-    private void updateSiteLastError(String error) {
-        site.setLastError(error);
+        if (error == null || error.isBlank()) {
+             site.setLastError(error);
+        }
+
         siteDao.update(site);
     }
 
@@ -165,8 +167,8 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
 
     private void stop() {
         logger.info("User stop the parsing");
-        updateSiteLastError("Индексация остановлена пользователем");
-        updateSiteStatus(Status.FAILED);
+        String error = "Индексация остановлена пользователем";
+        updateSite(Status.FAILED, null, error);
     }
 
     private HashSet<String> getValidHrefs(Page page) {

@@ -57,7 +57,7 @@ public class SiteParserHandler implements Runnable {
         siteDao.saveOrUpdate(s);
         logger.info("End parsing: " + site.getUrl());
         logger.info("Parsing " + site.getUrl() + " tooks " + (System.currentTimeMillis() - start) + " ms");
-        IndexingServiceImpl.setIsStarted(false);
+        IndexingServiceImpl.setStarted(false);
     }
 
     /**

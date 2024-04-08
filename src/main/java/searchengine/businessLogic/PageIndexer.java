@@ -37,12 +37,13 @@ public class PageIndexer implements Callable<Integer> {
      * Полная индексация страницы
      */
     public void index() {
-        logger.info("Start single page parsing: " + site.getUrl() + page.getPath());
+        logger.info("Start single page parsing: {}{}", site.getUrl(), page.getPath());
         long start = System.currentTimeMillis();
         getOrCreateSite();
 
         if (page.getCode() == 0) {
             Page p = getPage();
+
             if (p != null) {
                 page = p;
                 deleteOrDecreaseLemma();
@@ -53,7 +54,6 @@ public class PageIndexer implements Callable<Integer> {
             p = new Page();
             p.setSite(site);
             p.setPath(page.getPath());
-
             SiteParser.parsePage(p);
             pageDao.saveOrUpdate(p);
             page = p;
@@ -68,11 +68,9 @@ public class PageIndexer implements Callable<Integer> {
         String text = getTextFromPage(page.getContent());
         HashMap<String, Integer> lemmasMap = lemmaFinder.getLemmas(text);
         collectLemmasAndIndexes(lemmasMap);
-
         site.setStatus(Status.INDEXED);
         siteDao.saveOrUpdate(site);
-        logger.info("End single page parsing: " + site.getUrl() + page.getPath());
-        logger.info("Single page parsing " + site.getUrl() + page.getPath() + " tooks " + (System.currentTimeMillis() - start) + " ms");
+        logger.info("End single page parsing: {}{}. It took {} ms", site.getUrl(), page.getPath(), System.currentTimeMillis() - start);
     }
 
     @Override

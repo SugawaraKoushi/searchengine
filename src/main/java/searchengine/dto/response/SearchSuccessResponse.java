@@ -1,6 +1,7 @@
-package searchengine.dto.indexing.Response;
+package searchengine.dto.response;
 
 import lombok.Data;
+import searchengine.dto.search.SearchItem;
 
 import java.util.List;
 
