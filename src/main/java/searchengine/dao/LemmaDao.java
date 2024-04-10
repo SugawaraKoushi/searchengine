@@ -1,11 +1,8 @@
 package searchengine.dao;
 
-import jakarta.persistence.LockModeType;
-import jakarta.persistence.PersistenceException;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Root;
-import jakarta.transaction.Transactional;
 import org.hibernate.*;
 import org.hibernate.query.Query;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -83,21 +80,15 @@ public class LemmaDao implements Dao<Lemma> {
         return Optional.of(lemmas);
     }
 
-    public Optional<List<Lemma>> getAllBySite(Site site) {
+    public Optional<List<Lemma>> getLemmasByListAndSite(Object[] lemmas, Site site) {
         Session session = sessionFactory.openSession();
-        Query<Lemma> query = session.createQuery("from Lemma where site = :site", Lemma.class);
-        query.setParameter("site", site);
-        List<Lemma> lemmas = query.getResultList();
-        return lemmas.isEmpty() ? Optional.empty() : Optional.of(lemmas);
-    }
-
-    public Optional<List<Lemma>> getListByLemma(Object[] lemmas) {
-        Session session = sessionFactory.openSession();
-        Query<Lemma> query = session.createQuery("from Lemma where lemma in :lemmas", Lemma.class);
+        Query<Lemma> query = session.createQuery("from Lemma where site = :site and lemma in :lemmas", Lemma.class);
         query.setParameterList("lemmas", lemmas);
+        query.setParameter("site", site);
         List<Lemma> lemmaList = query.getResultList();
         return lemmaList.isEmpty() ? Optional.empty() : Optional.of(lemmaList);
     }
+
 
     @Override
     public void save(Lemma lemma) {
@@ -190,9 +181,5 @@ public class LemmaDao implements Dao<Lemma> {
         Query<Long> query = session.createQuery(criteria);
         Long count = query.getSingleResult();
         return Math.toIntExact(count);
-    }
-
-    private boolean isExists(Lemma lemma, Session session) {
-        return session.get(Lemma.class, lemma.getId()) != null;
     }
 }

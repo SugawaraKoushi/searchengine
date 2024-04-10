@@ -55,14 +55,7 @@ public class SearchServiceImpl implements SearchService {
             return createFailureResponse(ERRORS[0]);
 
         HashMap<String, Integer> lemmasMap = lemmaFinder.getLemmas(query);
-        List<String> words = new ArrayList<>();
-        lemmasMap.forEach((k, v) -> words.add(k));
-        List<Lemma> lemmasList = lemmaDao.getListByLemma(words.toArray()).orElse(null);
-
-        if (lemmasList == null || lemmasList.isEmpty())
-            return createFailureResponse(ERRORS[1]);
-
-        HashMap<Page, Float> relevantPages = getPages(sites, lemmasMap, lemmasList);
+        HashMap<Page, Float> relevantPages = getPages(sites, lemmasMap);
 
         if (relevantPages.isEmpty())
             return createFailureResponse(ERRORS[1]);
@@ -93,18 +86,16 @@ public class SearchServiceImpl implements SearchService {
         return sites;
     }
 
-    private HashMap<Page, Float> getPages(List<Site> sites, HashMap<String, Integer> lemmasMap, List<Lemma> lemmasList) {
+    private HashMap<Page, Float> getPages(List<Site> sites, HashMap<String, Integer> lemmasMap) {
         HashMap<Page, Float> relevantPages = new HashMap<>();
 
-        for (searchengine.model.Site s : sites) {
-            List<Lemma> lemmas = new ArrayList<>(lemmasList
-                    .stream()
-                    .filter(l -> l.getSite().equals(s) && lemmasMap.containsKey(l.getLemma()))
-                    .toList());
+        for (searchengine.model.Site site : sites) {
+            List<String> words = new ArrayList<>();
+            lemmasMap.forEach((k, v) -> words.add(k));
+            List<Lemma> lemmas = lemmaDao.getLemmasByListAndSite(words.toArray(), site).orElse(null);
 
-            if (lemmas.isEmpty()) {
+            if (lemmas == null || lemmas.isEmpty() || lemmas.size() != lemmasMap.size())
                 continue;
-            }
 
             lemmas.sort(Lemma::compareTo);
             List<Page> pages = getPagesContainingAllLemmas(lemmas);
