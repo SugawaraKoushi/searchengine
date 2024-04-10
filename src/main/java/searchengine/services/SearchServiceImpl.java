@@ -202,7 +202,7 @@ public class SearchServiceImpl implements SearchService {
         List<String> sentences = new ArrayList<>();
 
         for (String word : wordsVariations) {
-            Pattern pattern = Pattern.compile("\\b.{0,50}(" + word + ").{0,50}\\b");
+            Pattern pattern = Pattern.compile("\\b.{0,30}(" + word + ").{0,30}\\b");
             Matcher matcher;
             boolean isFoundInSentences = false;
 

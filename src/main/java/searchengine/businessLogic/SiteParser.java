@@ -147,7 +147,7 @@ public class SiteParser extends RecursiveTask<HashSet<Page>> {
             site.setStatusTime(statusTime);
         }
 
-        if (error == null || error.isBlank()) {
+        if (error != null && !error.isBlank()) {
              site.setLastError(error);
         }
 
