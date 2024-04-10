@@ -92,9 +92,11 @@ public class SearchServiceImpl implements SearchService {
         for (searchengine.model.Site site : sites) {
             List<String> words = new ArrayList<>();
             lemmasMap.forEach((k, v) -> words.add(k));
-            List<Lemma> lemmas = lemmaDao.getLemmasByListAndSite(words.toArray(), site).orElse(null);
+            List<Lemma> lemmas = lemmaDao.getLemmasByListAndSite(words.toArray(), site).orElse(new ArrayList<>());
 
-            if (lemmas == null || lemmas.isEmpty() || lemmas.size() != lemmasMap.size())
+            double threshold = lemmas.size() / (double) lemmasMap.size() * 100.0;
+
+            if (lemmas.isEmpty() || threshold < 50)
                 continue;
 
             lemmas.sort(Lemma::compareTo);
