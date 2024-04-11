@@ -231,6 +231,10 @@ public class SearchServiceImpl implements SearchService {
 
     private List<String> getWordVariations(String word) {
         List<String> result = new ArrayList<>();
+
+        if (word.length() < 3)
+            return result;
+
         char firstChar = word.toUpperCase().charAt(0);
         String wordWithFirstCharUpperCase = firstChar + word.substring(1).toLowerCase();
         result.add(wordWithFirstCharUpperCase);
