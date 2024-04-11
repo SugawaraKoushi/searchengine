@@ -195,37 +195,38 @@ public class SearchServiceImpl implements SearchService {
     private String getSnippet(Page page, String query) {
         String text = Jsoup.parse(page.getContent()).text();
         String[] words = query.split("\\s");
-
         List<String> wordsVariations = new ArrayList<>();
+
         for (String word : words) {
             wordsVariations.addAll(getWordVariations(word));
         }
+
         wordsVariations.sort(Comparator.comparingInt(String::length).reversed());
         List<String> sentences = new ArrayList<>();
 
         for (String word : wordsVariations) {
             Pattern pattern = Pattern.compile("\\b.{0,30}(" + word + ").{0,30}\\b");
             Matcher matcher;
-            boolean isFoundInSentences = false;
-
-            for (int i = 0; i < sentences.size(); i++) {
-                matcher = pattern.matcher(sentences.get(i));
-                if (matcher.find()) {
-                    sentences.set(i, matcher.group().replaceAll(word, "<b>" + word + "</b>"));
-                    isFoundInSentences = true;
-                }
-            }
+            boolean isFoundInSentences = sentences.stream().anyMatch(s -> s.contains(word));
 
             if (!isFoundInSentences) {
                 matcher = pattern.matcher(text);
-                if (matcher.find()) {
-                    String t = matcher.group().replaceAll(word, "<b>" + word + "</b>");
-                    sentences.add(t.replaceAll("\\\\", ""));
-                }
+
+                if (matcher.find())
+                    sentences.add(matcher.group().replaceAll("\\\\", ""));
             }
         }
 
-        return "... " + String.join(". ", sentences) + " ...";
+        makeWordsBold(sentences, wordsVariations);
+        return "... " + String.join("... ", sentences) + " ...";
+    }
+
+    private void makeWordsBold(List<String> sentences, List<String> words) {
+        for (int i = 0; i < sentences.size(); i++) {
+            for (String word : words) {
+                sentences.set(i, sentences.get(i).replaceAll(word, "<b>" + word + "</b>"));
+            }
+        }
     }
 
     private List<String> getWordVariations(String word) {
