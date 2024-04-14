@@ -87,14 +87,13 @@ public class PageDao implements Dao<Page> {
     @Override
     public void save(Page page) {
         Session session = sessionFactory.openSession();
-        Transaction transaction = session.beginTransaction();
-        try {
+
+        try (session) {
+            Transaction transaction = session.beginTransaction();
             session.persist(page);
             transaction.commit();
         } catch (Exception e) {
             System.out.println("Обнаружен дубликат.");
-        } finally {
-            session.close();
         }
     }
 
@@ -140,6 +139,16 @@ public class PageDao implements Dao<Page> {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
         session.remove(page);
+        transaction.commit();
+        session.close();
+    }
+
+    public void delete(Object[] ids) {
+        Session session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+        Query query = session.createQuery("delete from Page where id in :ids");
+        query.setParameterList("ids", ids)
+                .executeUpdate();
         transaction.commit();
         session.close();
     }

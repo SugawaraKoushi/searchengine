@@ -29,7 +29,7 @@ public class Lemma implements Serializable, Comparable<Lemma>{
     @Column(nullable = false)
     private int frequency;
 
-    @OneToMany(cascade = CascadeType.REMOVE, fetch = FetchType.LAZY, mappedBy = "lemma")
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "lemma")
     private List<Index> indexes;
 
     @Override

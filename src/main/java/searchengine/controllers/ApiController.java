@@ -71,7 +71,7 @@ public class ApiController {
     @PostMapping("/indexPage")
     public ResponseEntity<Response> indexPage(String url) {
         int code = 200;
-        Response response = indexingService.indexPage(url);
+        Response response = indexingService.index(url);
 
         if (response instanceof FailureResponse) {
             code = 400;

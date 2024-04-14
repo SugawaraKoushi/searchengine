@@ -106,42 +106,27 @@ public class IndexingServiceImpl implements IndexingService {
      * @return Успешность индексации страницы.
      */
     @Override
-    public Response indexPage(String url) {
+    public Response index(String url) {
         Matcher matcher = URL_PATTERN.matcher(url);
         Site site = new Site();
 
         if (matcher.find()) {
             List<Site> sortedSites = sites.getSites().stream().sorted().toList();
             site.setUrl(matcher.group("root"));
-            int index = Collections.binarySearch(sortedSites, site);
+            int pos = Collections.binarySearch(sortedSites, site);
 
-            if (index > -1) {
-                site = sortedSites.get(index);
-                String root = matcher.group("root");
-                String path = matcher.group("path");
+            if (pos > -1) {
+                searchengine.model.Site s = saveOrUpdateSite(sortedSites, pos, matcher);
 
-
-                searchengine.model.Site s = new searchengine.model.Site();
-                s.setUrl(root);
-                s = siteDao.get(s).orElse(new searchengine.model.Site());
-                s.setName(site.getName());
-                s.setUrl(root);
-                s.setStatus(Status.INDEXING);
-                s.setStatusTime(new Date());
-
-                Page p = new Page();
-                p.setPath(path);
-                p.setSite(s);
-
-                PageIndexer indexer = new PageIndexer(s, p);
-                indexer.index();
+                indexPage(s, matcher);
 
                 saveAndClearCurrentSiteLemmas(PageIndexer.getLemmas(), s);
                 saveAndClearCurrentSiteIndexes(PageIndexer.getIndexes(), s);
+                s.setStatus(Status.INDEXED);
+                siteDao.saveOrUpdate(s);
 
                 Response response = new Response();
                 response.setResult(true);
-
                 return response;
             }
         }
@@ -153,6 +138,29 @@ public class IndexingServiceImpl implements IndexingService {
         return response;
     }
 
+    private searchengine.model.Site saveOrUpdateSite(List<Site> sites, int pos, Matcher matcher) {
+        Site site = sites.get(pos);
+        String root = matcher.group("root");
+        searchengine.model.Site s = new searchengine.model.Site();
+        s.setUrl(root);
+        s = siteDao.get(s).orElse(new searchengine.model.Site());
+        s.setName(site.getName());
+        s.setUrl(root);
+        s.setStatus(Status.INDEXING);
+        s.setStatusTime(new Date());
+        siteDao.saveOrUpdate(s);
+        return s;
+    }
+
+    private void indexPage(searchengine.model.Site site, Matcher matcher) {
+        String path = matcher.group("path");
+        Page p = new Page();
+        p.setPath(path);
+        p.setSite(site);
+        PageIndexer indexer = new PageIndexer(site, p);
+        indexer.index();
+    }
+
     private void createSiteParserHandlers() {
         for (searchengine.config.Site site : sites.getSites()) {
             handlers.add(new SiteParserHandler(site));
@@ -160,32 +168,16 @@ public class IndexingServiceImpl implements IndexingService {
     }
 
     private void saveAndClearCurrentSiteLemmas(Map<String, Lemma> lemmasMap, searchengine.model.Site site) {
-        Set<Lemma> lemmasSet = new HashSet<>();
-        for (Lemma lemma : lemmasMap.values()) {
-            if (lemma.getSite().getId() == site.getId()) {
-                lemmasSet.add(lemma);
-            }
-        }
-
-        lemmaDao.saveOrUpdateBatch(lemmasSet);
-
-        for (Map.Entry<String, Lemma> entry : PageIndexer.getLemmas().entrySet()) {
-            if (lemmasSet.contains(entry.getValue())) {
-                PageIndexer.getLemmas().remove(entry.getKey());
-            }
-        }
+        List<Lemma> lemmas = lemmasMap.values().stream()
+                .filter(l -> l.getSite().getId() == site.getId()).toList();
+        lemmaDao.saveOrUpdateBatch(lemmas);
+        lemmasMap.entrySet().removeIf(e -> e.getValue().getSite().getId() == site.getId());
     }
 
     private void saveAndClearCurrentSiteIndexes(Collection<Index> indexes, searchengine.model.Site site) {
-        List<Index> indexesSet = new ArrayList<>();
-
-        for (Index index : indexes) {
-            if (index.getPage().getSite().getId() == site.getId()) {
-                indexesSet.add(index);
-            }
-        }
-
-        indexDao.saveOrUpdateBatch(indexesSet);
-        indexes.removeAll(indexesSet);
+        List<Index> indexList = indexes.stream()
+                .filter(index -> index.getPage().getSite().getId() == site.getId()).toList();
+        indexDao.saveOrUpdateBatch(indexList);
+        indexes.removeIf(i -> i.getPage().getSite().getId() == site.getId());
     }
 }

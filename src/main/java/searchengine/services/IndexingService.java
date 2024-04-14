@@ -7,5 +7,5 @@ public interface IndexingService {
 
     Response stopIndexing();
 
-    Response indexPage(String url);
+    Response index(String url);
 }

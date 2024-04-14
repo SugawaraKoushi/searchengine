@@ -87,7 +87,6 @@ public class SiteDao implements Dao<Site> {
     public void delete(Site site) {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
-
         session.remove(site);
         transaction.commit();
         session.close();

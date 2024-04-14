@@ -17,6 +17,7 @@ public class SiteParserHandler implements Runnable {
     private final SiteDao siteDao = new SiteDao();
     private final LemmaDao lemmaDao = new LemmaDao();
     private final IndexDao indexDao = new IndexDao();
+    private final PageDao pageDao = new PageDao();
     private boolean stop = false;
     private final Logger logger = LoggerFactory.getLogger(SiteParser.class);
 
@@ -29,35 +30,42 @@ public class SiteParserHandler implements Runnable {
      */
     @Override
     public void run() {
-        logger.info("Start parsing: " + site.getUrl());
-        long start = System.currentTimeMillis();
+        try {
+            logger.info("Start parsing: {}", site.getUrl());
+            long start = System.currentTimeMillis();
+            Site s = siteDao.get(createSiteInstance(site)).orElse(null);
+            if (s != null) {
+                deleteSiteIndexedData(s);
+                s.setStatus(Status.INDEXING);
+                s.setStatusTime(new Date(System.currentTimeMillis()));
+            } else {
+                s = createSiteInstance(site);
+            }
 
-        Site s = siteDao.get(createSiteInstance(site)).orElse(null);
-        if (s != null) {
-            s.setStatus(Status.INDEXING);
-            s.setStatusTime(new Date());
-        } else {
-            s = createSiteInstance(site);
+            siteDao.saveOrUpdate(s);
+            HashSet<Page> pages = getPagesFromSite(s);
+
+            if (pages != null) {
+                logger.info("Start saving pages:\t{}", site.getUrl());
+                indexPages(pages, s);
+                logger.info("End saving pages:\t{}", site.getUrl());
+                logger.info("Start saving lemmas:\t{}", site.getUrl());
+                saveAndClearCurrentSiteLemmas(PageIndexer.getLemmas(), s);
+                logger.info("End saving lemmas:\t{}", site.getUrl());
+                logger.info("Start saving indexes: {}", site.getUrl());
+                saveAndClearCurrentSiteIndexes(PageIndexer.getIndexes(), s);
+                logger.info("End saving indexes:\t{}", site.getUrl());
+            }
+
+            if (stop) return;
+
+            s.setStatus(Status.INDEXED);
+            siteDao.saveOrUpdate(s);
+            logger.info("End parsing: {}. It took {} ms", site.getUrl(), (System.currentTimeMillis() - start));
+            IndexingServiceImpl.setStarted(false);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-
-        siteDao.saveOrUpdate(s);
-
-        HashSet<Page> pages = getPagesFromSite(s);
-
-        if (pages != null) {
-            indexPages(pages, s);
-            saveAndClearCurrentSiteLemmas(PageIndexer.getLemmas(), s);
-            saveAndClearCurrentSiteIndexes(PageIndexer.getIndexes(), s);
-        }
-
-        if (stop)
-            return;
-
-        s.setStatus(Status.INDEXED);
-        siteDao.saveOrUpdate(s);
-        logger.info("End parsing: " + site.getUrl());
-        logger.info("Parsing " + site.getUrl() + " tooks " + (System.currentTimeMillis() - start) + " ms");
-        IndexingServiceImpl.setStarted(false);
     }
 
     /**
@@ -68,13 +76,23 @@ public class SiteParserHandler implements Runnable {
         parser.setStop(true);
     }
 
-    /**
-     * Создает экземпляр объекта класса model.Site.
-     *
-     * @param site Данные о сайте из application.yaml
-     * @return объект класса model.Site
-     */
-    public Site createSiteInstance(searchengine.config.Site site) {
+    private synchronized void deleteSiteIndexedData(Site site) {
+        List<Page> pages = pageDao.getAllBySite(site).orElse(new ArrayList<>());
+        List<Lemma> lemmas = lemmaDao.getAll().orElse(new ArrayList<>())
+                .stream()
+                .filter(l -> l.getSite().equals(site))
+                .toList();
+        List<Index> indexes = indexDao.getAll().orElse(new ArrayList<>())
+                .stream()
+                .filter(i -> pages.stream().anyMatch(p -> p.getId() == i.getPage().getId()))
+                .toList();
+
+        indexDao.delete(indexes.stream().map(Index::getId).toArray());
+        lemmaDao.delete(lemmas.stream().map(Lemma::getId).toArray());
+        pageDao.delete(pages.stream().map(Page::getId).toArray());
+    }
+
+    private Site createSiteInstance(searchengine.config.Site site) {
         Site s = new Site();
         s.setStatus(Status.INDEXING);
         s.setStatusTime(new Date(System.currentTimeMillis()));
@@ -105,7 +123,7 @@ public class SiteParserHandler implements Runnable {
         pages.removeIf(page -> page.getContent() == null);
         site.setPages(pages);
 
-        ExecutorService executor = Executors.newFixedThreadPool(2);
+        ExecutorService executor = Executors.newFixedThreadPool(16);
         List<PageIndexer> pageIndexers = new ArrayList<>();
 
         for (Page page : pages) {
@@ -122,31 +140,16 @@ public class SiteParserHandler implements Runnable {
     }
 
     private void saveAndClearCurrentSiteLemmas(Map<String, Lemma> lemmasMap, searchengine.model.Site site) {
-        Set<Lemma> lemmasSet = new HashSet<>();
-        for (Lemma lemma : lemmasMap.values()) {
-            if (lemma.getSite().getId() == site.getId()) {
-                lemmasSet.add(lemma);
-            }
-        }
-
-        lemmaDao.saveOrUpdateBatch(lemmasSet);
-
-        for (Map.Entry<String, Lemma> entry : PageIndexer.getLemmas().entrySet()) {
-            if (lemmasSet.contains(entry.getValue())) {
-                PageIndexer.getLemmas().remove(entry.getKey());
-            }
-        }
+        List<Lemma> lemmas = lemmasMap.values().stream()
+                .filter(l -> l.getSite().getId() == site.getId()).toList();
+        lemmaDao.saveOrUpdateBatch(lemmas);
+        lemmasMap.entrySet().removeIf(e -> e.getValue().getSite().getId() == site.getId());
     }
 
     private void saveAndClearCurrentSiteIndexes(Collection<Index> indexes, searchengine.model.Site site) {
-        List<Index> indexesList = new ArrayList<>();
-        for (Index index : indexes) {
-            if (index.getPage().getSite().getId() == site.getId()) {
-                indexesList.add(index);
-            }
-        }
-
-        indexDao.saveOrUpdateBatch(indexesList);
-        indexes.removeAll(indexesList);
+        List<Index> indexList = indexes.stream()
+                .filter(index -> index.getPage().getSite().getId() == site.getId()).toList();
+        indexDao.saveOrUpdateBatch(indexList);
+        indexes.removeIf(i -> i.getPage().getSite().getId() == site.getId());
     }
 }

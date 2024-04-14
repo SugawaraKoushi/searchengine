@@ -41,7 +41,7 @@ public class Index implements Serializable {
                 : this.getClass();
         if (thisEffectiveClass != oEffectiveClass) return false;
         Index index = (Index) o;
-        return getId() == index.getId();
+        return getLemma().getId() == index.getLemma().getId() && getPage().getId() == index.getPage().getId();
     }
 
     @Override

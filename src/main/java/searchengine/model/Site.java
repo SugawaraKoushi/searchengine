@@ -42,7 +42,7 @@ public class Site implements Serializable {
     @ToString.Exclude
     private Set<Page> pages;
 
-    @OneToMany(fetch = FetchType.LAZY, mappedBy = "site")
+    @OneToMany(cascade = CascadeType.REMOVE, fetch = FetchType.LAZY, mappedBy = "site")
     @ToString.Exclude
     private List<Lemma> lemmas;
 

@@ -110,25 +110,6 @@ public class LemmaDao implements Dao<Lemma> {
         session.close();
     }
 
-    public synchronized Lemma saveOrUpdate(Lemma lemma) {
-        Session session = sessionFactory.openSession();
-        Transaction transaction = session.beginTransaction();
-
-        Lemma l = null;
-        try {
-            l = get(lemma).orElse(null);
-            l.setFrequency(l.getFrequency() + lemma.getFrequency());
-            session.merge(l);
-        } catch (Exception e) {
-            session.persist(lemma);
-        } finally {
-            transaction.commit();
-            session.close();
-        }
-
-        return l != null ? l : lemma;
-    }
-
     public synchronized void saveOrUpdateBatch(Collection<Lemma> lemmas) {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
@@ -142,12 +123,14 @@ public class LemmaDao implements Dao<Lemma> {
             }
 
             try {
-                Lemma l = get(lemma).orElse(null);
-                lemma.setFrequency(lemma.getFrequency() + l.getFrequency());
-                lemma.setId(l.getId());
-                session.merge(lemma);
-            } catch (NullPointerException e) {
-                session.persist(lemma);
+                if (lemma.getId() == 0) {
+                    session.persist(lemma);
+                } else {
+                    Lemma l = get(lemma).orElse(null);
+                    lemma.setFrequency(lemma.getFrequency() + l.getFrequency());
+                    lemma.setId(l.getId());
+                    session.merge(lemma);
+                }
             } catch (HibernateException e) {
                 e.printStackTrace();
             }
@@ -165,6 +148,21 @@ public class LemmaDao implements Dao<Lemma> {
         Transaction transaction = session.beginTransaction();
 
         session.remove(lemma);
+        transaction.commit();
+        session.close();
+    }
+
+    public void delete(Object[] ids) {
+        Session session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+        try {
+            Query query = session.createQuery("delete from Lemma where id in :ids");
+            query.setParameterList("ids", ids)
+                    .executeUpdate();
+        } catch (Exception e) {
+            System.out.println("Lemma id");
+        }
+
         transaction.commit();
         session.close();
     }

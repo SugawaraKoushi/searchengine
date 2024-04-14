@@ -1,17 +1,15 @@
 package searchengine.dao;
 
-import jakarta.transaction.Transactional;
 import org.hibernate.*;
 import org.hibernate.query.Query;
 import org.springframework.beans.factory.annotation.Autowired;
 import searchengine.model.Index;
 import searchengine.model.Lemma;
 import searchengine.model.Page;
+import searchengine.model.Site;
 import searchengine.util.HibernateUtil;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 public class IndexDao implements Dao<Index> {
     private final static int BATCH_SIZE = 20;
@@ -67,8 +65,15 @@ public class IndexDao implements Dao<Index> {
     @Override
     public Optional<List<Index>> getAll() {
         Session session = sessionFactory.openSession();
-        List<Index> indexes = session.createQuery("from", Index.class).list();
-        session.close();
+        List<Index> indexes;
+
+        try {
+            indexes = session.createQuery("from " + Index.class.getSimpleName(), Index.class).getResultList();
+        } catch (Exception e) {
+            indexes = new ArrayList<>();
+        } finally {
+            session.close();
+        }
 
         return Optional.of(indexes);
     }
@@ -82,28 +87,13 @@ public class IndexDao implements Dao<Index> {
         session.close();
     }
 
-    public synchronized void saveOrUpdate(Index index) {
-        Session session = sessionFactory.openSession();
-        Transaction transaction = session.beginTransaction();
-
-        try {
-            session.persist(index);
-        } catch (Exception e) {
-            session.merge(index);
-        } finally {
-            transaction.commit();
-            session.close();
-        }
-    }
-
-    @Transactional
-    public synchronized void saveOrUpdateBatch(Collection<Index> indexes) {
+    public void saveOrUpdateBatch(Collection<Index> indexes) {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
         int i = 0;
 
         for (Index index : indexes) {
-            if (i > 0 && i % BATCH_SIZE == 0){
+            if (i > 0 && i % BATCH_SIZE == 0) {
                 session.flush();
                 session.clear();
             }
@@ -141,7 +131,13 @@ public class IndexDao implements Dao<Index> {
         session.close();
     }
 
-    private boolean isExists(Index index, Session session) {
-        return session.get(Index.class, index.getId()) != null;
+    public void delete(Object[] ids) {
+        Session session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+        Query query = session.createQuery("delete from Index where id in :ids");
+        query.setParameterList("ids", ids)
+                .executeUpdate();
+        transaction.commit();
+        session.close();
     }
 }

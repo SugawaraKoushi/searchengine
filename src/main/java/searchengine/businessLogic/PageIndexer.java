@@ -3,8 +3,6 @@ package searchengine.businessLogic;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.jsoup.Jsoup;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import searchengine.dao.*;
 import searchengine.model.*;
 
@@ -15,18 +13,17 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 @RequiredArgsConstructor
 public class PageIndexer implements Callable<Integer> {
-    private final LemmaDao lemmaDao = LemmaDao.getInstance();
-    private final IndexDao indexDao = new IndexDao();
-    private final PageDao pageDao = new PageDao();
-    private final SiteDao siteDao = new SiteDao();
     @Getter
     private static ConcurrentHashMap<String, Lemma> lemmas = new ConcurrentHashMap<>();
     @Getter
     private static CopyOnWriteArrayList<Index> indexes = new CopyOnWriteArrayList<>();
+    private final LemmaDao lemmaDao = LemmaDao.getInstance();
+    private final IndexDao indexDao = new IndexDao();
+    private final PageDao pageDao = new PageDao();
+    private final SiteDao siteDao = new SiteDao();
     private Site site;
     private Page page;
     private static final LemmaFinder lemmaFinder = LemmaFinder.getInstance();
-    private final Logger logger = LoggerFactory.getLogger(PageIndexer.class);
 
     public PageIndexer(Site site, Page page) {
         this.site = site;
@@ -37,20 +34,16 @@ public class PageIndexer implements Callable<Integer> {
      * Полная индексация страницы
      */
     public void index() {
-        logger.info("Start single page parsing: {}{}", site.getUrl(), page.getPath());
-        long start = System.currentTimeMillis();
         getOrCreateSite();
+        Page p = getPage();
+
+        if (p != null) {
+            deleteOrDecreaseLemma(p);
+            deleteIndexes(p);
+            deletePage(p);
+        }
 
         if (page.getCode() == 0) {
-            Page p = getPage();
-
-            if (p != null) {
-                page = p;
-                deleteOrDecreaseLemma();
-                deleteIndexes();
-                deletePage();
-            }
-
             p = new Page();
             p.setSite(site);
             p.setPath(page.getPath());
@@ -68,9 +61,6 @@ public class PageIndexer implements Callable<Integer> {
         String text = getTextFromPage(page.getContent());
         HashMap<String, Integer> lemmasMap = lemmaFinder.getLemmas(text);
         collectLemmasAndIndexes(lemmasMap);
-        site.setStatus(Status.INDEXED);
-        siteDao.saveOrUpdate(site);
-        logger.info("End single page parsing: {}{}. It took {} ms", site.getUrl(), page.getPath(), System.currentTimeMillis() - start);
     }
 
     @Override
@@ -79,7 +69,7 @@ public class PageIndexer implements Callable<Integer> {
             index();
             return 1;
         } catch (Exception e) {
-            logger.error(e.getMessage());
+            e.printStackTrace();
             return 0;
         }
     }
@@ -121,17 +111,15 @@ public class PageIndexer implements Callable<Integer> {
         return index;
     }
 
-    private void deleteOrDecreaseLemma() {
-        Optional<List<Index>> opt1 = indexDao.getListByPage(page);
-        List<Index> indexes = opt1.orElse(new ArrayList<>());
+    private void deleteOrDecreaseLemma(Page p) {
+        List<Index> indexes = indexDao.getListByPage(p).orElse(new ArrayList<>());
 
         if (indexes.isEmpty()) {
             return;
         }
 
         for (Index index : indexes) {
-            Optional<Lemma> opt2 = lemmaDao.get(index.getLemma().getId());
-            Lemma lemma = opt2.orElse(null);
+            Lemma lemma = lemmaDao.get(index.getLemma().getId()).orElse(null);
 
             if (lemma == null) {
                 return;
@@ -140,6 +128,7 @@ public class PageIndexer implements Callable<Integer> {
             int frequency = lemma.getFrequency() - Math.round(index.getRank());
 
             if (frequency <= 0) {
+                indexDao.delete(index);
                 lemmaDao.delete(lemma);
             } else {
                 lemma.setFrequency(frequency);
@@ -148,8 +137,8 @@ public class PageIndexer implements Callable<Integer> {
         }
     }
 
-    private void deleteIndexes() {
-        Optional<List<Index>> optional = indexDao.getListByPage(page);
+    private synchronized void deleteIndexes(Page p) {
+        Optional<List<Index>> optional = indexDao.getListByPage(p);
         List<Index> indexes = optional.orElse(new ArrayList<>());
 
         if (indexes.isEmpty()) {
@@ -161,8 +150,8 @@ public class PageIndexer implements Callable<Integer> {
         }
     }
 
-    private void deletePage() {
-        pageDao.delete(page);
+    private void deletePage(Page p) {
+        pageDao.delete(p);
     }
 
     private void collectLemmasAndIndexes(HashMap<String, Integer> lemmasMap) {
@@ -179,8 +168,11 @@ public class PageIndexer implements Callable<Integer> {
             }
 
             lemmas.compute(entry.getKey(), (k, v) -> lemma);
-            index = createIndex(lemma, entry.getValue());
-            indexes.add(index);
+
+            if (lemma.getSite().getId() == page.getSite().getId()) {
+                index = createIndex(lemma, entry.getValue());
+                indexes.add(index);
+            }
         }
     }
 }
