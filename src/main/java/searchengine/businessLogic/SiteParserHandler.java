@@ -133,7 +133,7 @@ public class SiteParserHandler implements Runnable {
         try {
             List<Future<Integer>> futures = executor.invokeAll(pageIndexers);
         } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+            logger.error(e.getMessage());
         }
 
         executorShutdown(executor);

@@ -96,7 +96,7 @@ public class SearchServiceImpl implements SearchService {
 
             double threshold = lemmas.size() / (double) lemmasMap.size() * 100.0;
 
-            if (lemmas.isEmpty() || threshold < 50)
+            if (lemmas.isEmpty() || threshold < 80)
                 continue;
 
             lemmas.sort(Lemma::compareTo);
